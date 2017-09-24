@@ -143,6 +143,7 @@ static rt_err_t rt_rtc_control(rt_device_t dev, rt_uint8_t cmd, void *args)
 *******************************************************************************/
 int RTC_Configuration(void)
 {
+    RTC_InitTypeDef  RTC_InitStructure;
 	/* Enable the PWR clock */
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
 
@@ -186,6 +187,11 @@ int RTC_Configuration(void)
 
 	/* Wait for RTC APB registers synchronisation */
 	RTC_WaitForSynchro();
+
+    RTC_InitStructure.RTC_AsynchPrediv = 0x7F;
+	RTC_InitStructure.RTC_SynchPrediv = 0xFF;
+	RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_24;
+	RTC_Init(&RTC_InitStructure);
 
 	return 0;
 }

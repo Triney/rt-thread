@@ -33,8 +33,9 @@
 #include "stm32f4xx_rcc.h"
 
 /* STM32F ETH dirver options */
+#define PHY_USING_DP83848         1
 #define RMII_MODE                       /* MII_MODE or RMII_MODE */
-#define RMII_TX_GPIO_GROUP        2     /* 1:GPIOB or 2:GPIOG */
+#define RMII_TX_GPIO_GROUP        1     /* 1:GPIOB or 2:GPIOG */
 //#define CHECKSUM_BY_HARDWARE          /* don't ues hardware checksum. */
 
 /** @addtogroup STM32F4XX_ETH_Driver
@@ -174,7 +175,9 @@ uint32_t ETH_Init(ETH_InitTypeDef* ETH_InitStruct)
   assert_param(IS_ETH_CONTROL_FRAMES(ETH_InitStruct->ETH_PassControlFrames));
   assert_param(IS_ETH_BROADCAST_FRAMES_RECEPTION(ETH_InitStruct->ETH_BroadcastFramesReception));
   assert_param(IS_ETH_DESTINATION_ADDR_FILTER(ETH_InitStruct->ETH_DestinationAddrFilter));
-//  assert_param(IS_ETH_PROMISCIOUS_MODE(ETH_InitStruct->ETH_PromiscuousMode));
+#if PHY_USING_DP83848  
+  //assert_param(IS_ETH_PROMISCIOUS_MODE(ETH_InitStruct->ETH_PromiscuousMode));
+#endif
   assert_param(IS_ETH_MULTICAST_FRAMES_FILTER(ETH_InitStruct->ETH_MulticastFramesFilter));
   assert_param(IS_ETH_UNICAST_FRAMES_FILTER(ETH_InitStruct->ETH_UnicastFramesFilter));
   assert_param(IS_ETH_PAUSE_TIME(ETH_InitStruct->ETH_PauseTime));
@@ -3122,10 +3125,10 @@ uint32_t ETH_HandlePTPTxPkt(uint8_t *ppkt, uint16_t FrameLength, uint32_t *PTPTx
 
   /* Clear the DMATxDescToSet status register TTSS flag */
   DMATxDescToSet->Status &= ~ETH_DMATxDesc_TTSS;
-
+#ifdef USE_ENHANCED_DMA_DESCRIPTORS
   *PTPTxTab++ = DMAPTPTxDescToSet->TimeStampLow;
   *PTPTxTab = DMAPTPTxDescToSet->TimeStampHigh;
-
+#endif
   /* Update the ETHERNET DMA global Tx descriptor with next Tx decriptor */
   /* Chained Mode */
   if((DMAPTPTxDescToSet->Status & ETH_DMATxDesc_TCH) != (uint32_t)RESET)
@@ -3187,10 +3190,10 @@ uint32_t ETH_HandlePTPRxPkt(uint8_t *ppkt, uint32_t *PTPRxTab)
     /* Return ERROR */
     framelength = ETH_ERROR;
   }
-
+#ifdef USE_ENHANCED_DMA_DESCRIPTORS
   *PTPRxTab++ = DMAPTPRxDescToGet->TimeStampLow;
   *PTPRxTab = DMAPTPRxDescToGet->TimeStampHigh;
-
+#endif
   /* Set Own bit of the Rx descriptor Status: gives the buffer back to ETHERNET DMA */
   DMAPTPRxDescToGet->Status = ETH_DMARxDesc_OWN;
 
@@ -3418,7 +3421,7 @@ static rt_err_t rt_stm32_eth_init(rt_device_t dev)
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_ETH_MAC | RCC_AHB1Periph_ETH_MAC_Tx |
                            RCC_AHB1Periph_ETH_MAC_Rx, ENABLE);
 
-    SYSCFG_ETH_MediaInterfaceConfig(SYSCFG_ETH_MediaInterface_RMII);
+//    SYSCFG_ETH_MediaInterfaceConfig(SYSCFG_ETH_MediaInterface_RMII);
 
     /* Reset ETHERNET on AHB Bus */
     ETH_DeInit();
@@ -3474,7 +3477,7 @@ static rt_err_t rt_stm32_eth_init(rt_device_t dev)
 
     /* Enable DMA Receive interrupt (need to enable in this case Normal interrupt) */
     ETH_DMAITConfig(ETH_DMA_IT_NIS | ETH_DMA_IT_R | ETH_DMA_IT_T, ENABLE);
-
+    //ETH_DMAITConfig(ETH_DMA_IT_NIS | ETH_DMA_IT_R , ENABLE);
     /* Initialize Tx Descriptors list: Chain Mode */
     ETH_DMATxDescChainInit(DMATxDscrTab, &Tx_Buff[0][0], ETH_TXBUFNB);
     /* Initialize Rx Descriptors list: Chain Mode  */
@@ -3811,6 +3814,7 @@ static void GPIO_Configuration(void)
     ETH_RMII_TXD0 -------> PB12
     ETH_RMII_TXD1 -------> PB13
 */
+    SYSCFG_ETH_MediaInterfaceConfig(SYSCFG_ETH_MediaInterface_RMII);
     GPIO_PinAFConfig(GPIOA, GPIO_PinSource1, GPIO_AF_ETH); /* RMII_REF_CLK */
     GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_ETH); /* RMII_CRS_DV */
 
@@ -3897,26 +3901,169 @@ static void phy_monitor_thread_entry(void *parameter)
     while(1)
     {
         uint16_t status  = ETH_ReadPHYRegister(phy_addr, PHY_BSR);
-        STM32_ETH_PRINTF("LAN8720 status:0x%04X\r\n", status);
+        #if PHY_USING_DP83848
+        uint16_t PHY_RBR;
+        static uint16_t pre_status = 0;
+        static uint16_t pre_PHY_RBR = 0;
+        if ( pre_status !=  status)
+        {
+            pre_status = status;
+            STM32_ETH_PRINTF("DP83848 basic mode status register:0x%04X\r\n", status);
+            STM32_ETH_PRINTF("Capable: \n");
+            #if 0
+            if ( (status & (1<<15)) == (1<<15))
+            {
+                STM32_ETH_PRINTF("    100BASE T4\n");
+            }
+            if ( (status & (1<<14)) == (1<<14))
+            {
+                STM32_ETH_PRINTF("    100BASE-TX in full duplex mode\n");
+            }    
+            if ( (status & (1<<13)) == (1<<13))
+            {
+                STM32_ETH_PRINTF("    100BASE-TX in half duplex mode\n");
+            }               
+            if ( (status & (1<<12)) == (1<<12))
+            {
+                STM32_ETH_PRINTF("    10BASE-T in full duplex mode\n");
+            }               
+            if ( (status & (1<<11)) == (1<<11))
+            {
+                STM32_ETH_PRINTF("    10BASE-T in half duplex mode\n");
+            }         
+            if ( (status & (1<<6)) == (1<<6))
+            {
+                STM32_ETH_PRINTF("    perform management transaction with preamble suppressed\n");
+            }             
+            else
+            {
+                STM32_ETH_PRINTF("    Normal management operation\n");
+            }
+            
+            if ( (status & (1<<5)) == (1<<5))
+            {
+                STM32_ETH_PRINTF("    Auto-Negotiation process complete.\n");
+            }             
+            else
+            {
+                STM32_ETH_PRINTF("    Auto-Negotiation process not complete.\n");
+            }           
+            
+            if ( (status & (1<<4)) == (1<<4))
+            {
+                STM32_ETH_PRINTF("    Remote Fault condition detected.\n");
+            }             
+            else
+            {
+                STM32_ETH_PRINTF("    No Remote Fault condition detected.\n");
+            }   
+            if ( (status & (1<<3)) == (1<<3))
+            {
+                STM32_ETH_PRINTF("    Device is able to perform Auto-Negotiation.\n");
+            }             
+            else
+            {
+                STM32_ETH_PRINTF("    Device is not able to perform Auto-Negotiation.\n");
+            }     
 
+            if ( (status & (1<<2)) == (1<<2))
+            {
+                STM32_ETH_PRINTF("    Valid link established.\n");
+            }             
+            else
+            {
+                STM32_ETH_PRINTF("    Link not established.\n");
+            }              
+
+            if ( (status & (1<<1)) == (1<<1))
+            {
+                STM32_ETH_PRINTF("    Jabber condition detected.\n");
+            }             
+            else
+            {
+                STM32_ETH_PRINTF("    No Jabber.\n");
+            }              
+
+            if ( (status & 1) == 1)
+            {
+                STM32_ETH_PRINTF("    Extended register capabilities.\n");
+            }             
+            else
+            {
+                STM32_ETH_PRINTF("    Basic register set capabilities only.\n");
+            }     
+            #endif
+        }
+
+        PHY_RBR = ETH_ReadPHYRegister(phy_addr, 0x17);
+        if ( pre_PHY_RBR != PHY_RBR)
+        {
+            pre_PHY_RBR = PHY_RBR;
+            STM32_ETH_PRINTF("DP83848 RMII and bypass register:0x%04X\r\n", PHY_RBR);
+            if ( (PHY_RBR & (1<<5)) == (1<<5))
+            {
+                STM32_ETH_PRINTF("    RMII mode ");
+                if ( (PHY_RBR & (1<<4)) == (1<<4))
+                {
+                    STM32_ETH_PRINTF("VERSION 1.2\n ");
+                }
+                else
+                {
+                    STM32_ETH_PRINTF("VERSION 1.0\n ");
+                }
+            }
+            else
+            {
+                STM32_ETH_PRINTF("    MII mode ");
+            }
+
+        }
+        #else
+        STM32_ETH_PRINTF("LAN8720 status:0x%04X\r\n", status);
+        #endif
+        
         phy_speed_new = 0;
 
         if(status & (PHY_AutoNego_Complete | PHY_Linked_Status))
         {
             uint16_t SR;
 
+            #if PHY_USING_DP83848
+            uint16_t rx_err_cnt;
+            static uint16_t pre_sr = 0;
+            SR = ETH_ReadPHYRegister(phy_addr, PHY_SR);
+            if ( pre_sr != SR)
+            {
+                pre_sr = SR;
+                STM32_ETH_PRINTF("DP83848 PHY status register:0x%04X\r\n", SR);
+                if ( (SR & (1<<13)) )
+                {
+                    STM32_ETH_PRINTF("Receive error event has occurred since last read of RXERCNT\n");
+                    rx_err_cnt = ETH_ReadPHYRegister(phy_addr, 0x15);
+                    STM32_ETH_PRINTF("Count %d", rx_err_cnt);
+                }
+            }
+            //
+            SR = SR & 0X07;
+            #else            
             SR = ETH_ReadPHYRegister(phy_addr, 31);
             STM32_ETH_PRINTF("LAN8720 REG 31:0x%04X\r\n", SR);
 
             SR = (SR >> 2) & 0x07; /* LAN8720, REG31[4:2], Speed Indication. */
+            #endif
+            
             phy_speed_new = PHY_LINK_MASK;
-
+            
+            #if PHY_USING_DP83848
+            if((SR & PHY_Speed_Status) != PHY_Speed_Status)
+            #else
             if((SR & 0x03) == 2)
+            #endif
             {
                 phy_speed_new |= PHY_100M_MASK;
             }
 
-            if(SR & 0x04)
+            if((SR & PHY_Duplex_Status) == PHY_Duplex_Status)
             {
                 phy_speed_new |= PHY_DUPLEX_MASK;
             }
@@ -4036,3 +4183,22 @@ void rt_hw_stm32_eth_init(void)
             rt_thread_startup(tid);
     }
 }
+
+#ifdef ETH_DEBUG
+void ETH_REG_READ(int RegAddr)
+{
+    uint16_t RegVal;
+
+    assert_param( IS_ETH_PHY_REG(RegAddr));
+
+    RegVal = ETH_ReadPHYRegister(0x01, (uint16_t)RegAddr);
+
+    STM32_ETH_PRINTF("Reg %d is 0x%04X\r\n", RegAddr, RegVal);
+    
+}
+#ifdef RT_USING_FINSH
+#include <finsh.h>
+FINSH_FUNCTION_EXPORT(ETH_REG_READ, read dp83848 reg value);
+#endif
+
+#endif

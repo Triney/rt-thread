@@ -65,6 +65,12 @@
 #define UART5_GPIO_RCC_RX   RCC_AHB1Periph_GPIOD
 #define RCC_APBPeriph_UART5 RCC_APB1Periph_UART5
 
+typedef struct stm32_rs485_ctl
+{
+    GPIO_TypeDef   *GPIOx;
+    uint16_t        GPIO_Pin;
+}stm32_rs485_oe;
+
 /* STM32 uart driver */
 struct stm32_uart
 {
@@ -85,6 +91,7 @@ struct stm32_uart
         /* last receive index */
         rt_size_t last_recv_index;
     } dma;
+    stm32_rs485_oe rs485_oe;
 };
 
 static void DMA_Configuration(struct rt_serial_device *serial);

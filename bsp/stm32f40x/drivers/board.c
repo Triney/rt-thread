@@ -19,7 +19,13 @@
 #include "board.h"
 #include "usart.h"
 #include "gpio.h"
+#ifdef RT_USING_SPI
+#include "stm32f4_spi.h"
+#endif
 
+#ifdef RT_USING_RTC
+#include "stm32f4_rtc.h"
+#endif
 /**
  * @addtogroup STM32
  */
@@ -99,6 +105,11 @@ void rt_hw_board_init()
 #ifdef RT_USING_CONSOLE
     rt_console_set_device(CONSOLE_DEVICE);
 #endif
+    
+    rt_hw_spi_init();
+    rt_hw_rtc_init();
+
+    
 }
 
 /*@}*/

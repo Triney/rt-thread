@@ -18,6 +18,12 @@ if GetDepend('RT_USING_LWIP'):
 # add gpio drivers.
 if GetDepend('RT_USING_PIN'):
     src += ['gpio.c']
+	
+if GetDepend('RT_USING_SPI'):
+    src += ['stm32f4_spi.c']
+	
+if GetDepend('RT_USING_RTC'):
+    src += ['stm32f4_rtc.c']	
 
 CPPPATH = [cwd]
 

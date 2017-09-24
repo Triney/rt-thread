@@ -62,6 +62,13 @@
 /* Using serial framework */
 #define RT_USING_SERIAL
 
+#define RT_USING_SPI
+//#define RT_USING_W25QXX
+#define RT_USING_SST25VFXX
+
+#define RT_USING_I2C
+#define RT_USING_I2C_BITOPS
+
 #define RT_USING_UART1
 #define RT_USING_UART2
 #define RT_USING_UART3
@@ -69,13 +76,16 @@
 /* Using GPIO pin framework */
 #define RT_USING_PIN
 
+#define RT_USING_RTC
+#define RT_USING_ALARM
+
 /* Using Hardware Timer framework */
 //#define RT_USING_HWTIMER
 
 /* SECTION: Console options */
 #define RT_USING_CONSOLE
 /* the buffer size of console*/
-#define RT_CONSOLEBUF_SIZE	128
+#define RT_CONSOLEBUF_SIZE	1024
 
 /* SECTION: finsh, a C-Express shell */
 #define RT_USING_FINSH
@@ -107,7 +117,8 @@
 // #define RT_USING_DFS_ROMFS
 
 /* SECTION: lwip, a lighwight TCP/IP protocol stack */
-/* #define RT_USING_LWIP */
+ #define RT_USING_LWIP 
+ #define RT_USING_LWIP141
 /* LwIP uses RT-Thread Memory Management */
 #define RT_LWIP_USING_RT_MEM
 /* Enable ICMP protocol*/
@@ -118,6 +129,12 @@
 #define RT_LWIP_TCP
 /* Enable DNS */
 #define RT_LWIP_DNS
+/* Enable DHCP */
+//#define RT_LWIP_DHCP
+/* Enable IGMP */
+#define RT_LWIP_IGMP
+
+#define RT_LWIP_DEBUG
 
 /* the number of simulatenously active TCP connections*/
 #define RT_LWIP_TCP_PCB_NUM	5

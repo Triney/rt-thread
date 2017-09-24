@@ -31,8 +31,8 @@
 #include "stm32f4xx.h"
 
 /* Uncomment this line when using time stamping and/or IPv4 checksum offload */
-#define USE_ENHANCED_DMA_DESCRIPTORS
-
+//#define USE_ENHANCED_DMA_DESCRIPTORS
+//#define CHECKSUM_BY_HARDWARE
 /**
  * @brief Uncomment the line below if you want to use user defined Delay function
  *        (for precise timing), otherwise default _eth_delay_ function defined within

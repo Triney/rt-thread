@@ -48,7 +48,7 @@ extern char __ICFEDIT_region_RAM_end__;
 
 // <o> Console on USART: <0=> no console <1=>USART 1 <2=>USART 2 <3=> USART 3
 // 	<i>Default: 1
-#define STM32_CONSOLE_USART		2
+#define STM32_CONSOLE_USART		3
 
 void rt_hw_board_init(void);
 
