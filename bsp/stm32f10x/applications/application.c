@@ -41,6 +41,9 @@
 #endif
 
 #include "led.h"
+#include "Drv_matrix_key.h"
+#include "Drv_74hc595.h"
+#include "app_test_drv.h"
 
 ALIGN(RT_ALIGN_SIZE)
 static rt_uint8_t led_stack[ 512 ];
@@ -55,7 +58,7 @@ static void led_thread_entry(void* parameter)
     {
         /* led1 on */
 #ifndef RT_USING_FINSH
-        rt_kprintf("led on, count : %d\r\n",count);
+        //rt_kprintf("led on, count : %d\r\n",count);
 #endif
         count++;
         rt_hw_led_on(0);
@@ -63,7 +66,7 @@ static void led_thread_entry(void* parameter)
 
         /* led1 off */
 #ifndef RT_USING_FINSH
-        rt_kprintf("led off\r\n");
+        //rt_kprintf("led off\r\n");
 #endif
         rt_hw_led_off(0);
         rt_thread_delay( RT_TICK_PER_SECOND/2 );
@@ -94,6 +97,13 @@ void rt_init_thread_entry(void* parameter)
     rt_components_init();
 #endif
 
+#ifdef RT_USING_SPI
+    #ifdef RT_USING_W25QXX
+    w25qxx_init("Flash0","spi11");
+    
+    #endif
+#endif    
+    
     /* Filesystem Initialization */
 #if defined(RT_USING_DFS) && defined(RT_USING_DFS_ELMFAT)
     /* mount sd card fat partition 1 as root directory */
@@ -166,9 +176,26 @@ int rt_application_init(void)
                                    2048, 80, 20);
 #endif
 
+    
     if (init_thread != RT_NULL)
         rt_thread_startup(init_thread);
+    #if 1
+    init_thread = rt_thread_create("test_key",
+                                   test_key_thread_entry, RT_NULL,
+                                   2048, 30, 5);
+    if (init_thread != RT_NULL)
+        rt_thread_startup(init_thread);
+    #endif
 
+    #if 1
+    init_thread = rt_thread_create("test_74hc595",
+                                   test_74hc595_drv_thread_entry, RT_NULL,
+                                   2048, 31, 5);
+    if (init_thread != RT_NULL)
+        rt_thread_startup(init_thread);    
+    #endif
+    
+    App_Rs485_CMD_Process();
     return 0;
 }
 
