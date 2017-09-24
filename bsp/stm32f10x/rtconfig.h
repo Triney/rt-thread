@@ -82,7 +82,9 @@
 
 #define RT_USING_PIN
 
-#define RT_USING_CAN
+#define RT_USING_SPI
+#define RT_USING_W25QXX
+//#define RT_USING_CAN
 
 #define RT_CAN_USING_BUS_HOOK
 
@@ -90,21 +92,21 @@
 /* SECTION: device filesystem */
 /* #define RT_USING_DFS */
 
-#define RT_USING_DFS_ELMFAT
+//#define RT_USING_DFS_ELMFAT
 /* Reentrancy (thread safe) of the FatFs module.  */
-#define RT_DFS_ELM_REENTRANT
+//#define RT_DFS_ELM_REENTRANT
 /* Number of volumes (logical drives) to be used. */
-#define RT_DFS_ELM_DRIVES			2
+//#define RT_DFS_ELM_DRIVES			2
 /* #define RT_DFS_ELM_USE_LFN			1 */
 /* #define RT_DFS_ELM_CODE_PAGE			936 */
-#define RT_DFS_ELM_MAX_LFN			255
+//#define RT_DFS_ELM_MAX_LFN			255
 /* Maximum sector size to be handled. */
-#define RT_DFS_ELM_MAX_SECTOR_SIZE  512
+//#define RT_DFS_ELM_MAX_SECTOR_SIZE  512
 
 /* the max number of mounted filesystem */
-#define DFS_FILESYSTEMS_MAX			2
+//#define DFS_FILESYSTEMS_MAX			2
 /* the max number of opened files 		*/
-#define DFS_FD_MAX					4
+//#define DFS_FD_MAX					4
 
 /* SECTION: lwip, a lighwight TCP/IP protocol stack */
 /* #define RT_USING_LWIP */
