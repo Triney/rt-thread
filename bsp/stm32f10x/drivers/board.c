@@ -20,6 +20,7 @@
 #include "stm32f10x_fsmc.h"
 #include "board.h"
 #include "usart.h"
+#include "rt_stm32f10x_spi.h"
 
 #ifdef  RT_USING_COMPONENTS_INIT
 #include <components.h>
@@ -187,6 +188,8 @@ void rt_hw_board_init(void)
 
     rt_hw_usart_init();
     rt_console_set_device(RT_CONSOLE_DEVICE_NAME);
+    
+    rt_stm32f10x_spi_init();
 
 #ifdef RT_USING_COMPONENTS_INIT
     rt_components_board_init();

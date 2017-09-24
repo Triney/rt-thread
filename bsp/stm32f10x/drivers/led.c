@@ -26,9 +26,9 @@
 
 #else
 
-#define led1_rcc                    RCC_APB2Periph_GPIOE
-#define led1_gpio                   GPIOE
-#define led1_pin                    (GPIO_Pin_2)
+#define led1_rcc                    RCC_APB2Periph_GPIOB
+#define led1_gpio                   GPIOB
+#define led1_pin                    (GPIO_Pin_4)
 
 #define led2_rcc                    RCC_APB2Periph_GPIOE
 #define led2_gpio                   GPIOE
@@ -40,6 +40,8 @@ void rt_hw_led_init(void)
 {
     GPIO_InitTypeDef GPIO_InitStructure;
 
+    GPIO_PinRemapConfig(GPIO_Remap_SWJ_NoJTRST,ENABLE);    
+    
     RCC_APB2PeriphClockCmd(led1_rcc|led2_rcc,ENABLE);
 
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;

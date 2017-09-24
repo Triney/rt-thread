@@ -26,28 +26,37 @@
 #define UART1_GPIO_TX        GPIO_Pin_9
 #define UART1_GPIO_RX        GPIO_Pin_10
 #define UART1_GPIO           GPIOA
+#define UART1_OE_PIN         NULL
+#define UART1_OE_GPIO        NULL
 
 /* USART2 */
 #define UART2_GPIO_TX        GPIO_Pin_2
 #define UART2_GPIO_RX        GPIO_Pin_3
 #define UART2_GPIO           GPIOA
+#define UART2_OE_PIN         NULL
+#define UART2_OE_GPIO        NULL
 
 /* USART3_REMAP[1:0] = 00 */
 #define UART3_GPIO_TX        GPIO_Pin_10
 #define UART3_GPIO_RX        GPIO_Pin_11
 #define UART3_GPIO           GPIOB
+#define UART3_OE_PIN         NULL
+#define UART3_OE_GPIO        NULL
 
 /* USART4 */
 #define UART4_GPIO_TX        GPIO_Pin_10
 #define UART4_GPIO_RX        GPIO_Pin_11
 #define UART4_GPIO           GPIOC
-
+#define UART4_OE_PIN         NULL
+#define UART4_OE_GPIO        NULL
 
 /* STM32 uart driver */
 struct stm32_uart
 {
     USART_TypeDef *uart_device;
     IRQn_Type irq;
+    GPIO_TypeDef  *rs485_oe;
+    uint16_t       rs485_oe_pin;
     struct stm32_uart_dma
     {
         /* dma channel */
@@ -300,6 +309,8 @@ struct stm32_uart uart1 =
 {
     USART1,
     USART1_IRQn,
+    UART1_OE_GPIO,
+    UART1_OE_PIN,
     {
         DMA1_Channel5,
         DMA1_FLAG_GL5,
@@ -337,6 +348,8 @@ struct stm32_uart uart2 =
 {
     USART2,
     USART2_IRQn,
+    UART2_OE_GPIO,
+    UART2_OE_PIN,
     {
         DMA1_Channel6,
         DMA1_FLAG_GL6,
@@ -374,6 +387,8 @@ struct stm32_uart uart3 =
 {
     USART3,
     USART3_IRQn,
+    UART3_OE_GPIO,
+    UART3_OE_PIN,
     {
         DMA1_Channel3,
         DMA1_FLAG_GL3,
@@ -411,6 +426,8 @@ struct stm32_uart uart4 =
 {
     UART4,
     UART4_IRQn,
+    UART4_OE_GPIO,
+    UART4_OE_PIN,
     {
         DMA2_Channel3,
         DMA2_FLAG_GL3,
@@ -488,6 +505,14 @@ static void GPIO_Configuration(void)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Pin = UART1_GPIO_TX;
     GPIO_Init(UART1_GPIO, &GPIO_InitStructure);
+
+    if (NULL != UART1_OE_GPIO)
+    {
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+        GPIO_InitStructure.GPIO_Pin = UART1_OE_PIN;
+        GPIO_Init(UART1_GPIO, &GPIO_InitStructure);
+    }
+    
 #endif /* RT_USING_UART1 */
 
 #if defined(RT_USING_UART2)
@@ -499,6 +524,13 @@ static void GPIO_Configuration(void)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Pin = UART2_GPIO_TX;
     GPIO_Init(UART2_GPIO, &GPIO_InitStructure);
+
+    if (NULL != UART2_OE_GPIO)
+    {
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+        GPIO_InitStructure.GPIO_Pin = UART2_OE_PIN;
+        GPIO_Init(UART2_GPIO, &GPIO_InitStructure);
+    }    
 #endif /* RT_USING_UART2 */
 
 #if defined(RT_USING_UART3)
@@ -510,6 +542,13 @@ static void GPIO_Configuration(void)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Pin = UART3_GPIO_TX;
     GPIO_Init(UART3_GPIO, &GPIO_InitStructure);
+
+    if (NULL != UART3_OE_GPIO)
+    {
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+        GPIO_InitStructure.GPIO_Pin = UART3_OE_PIN;
+        GPIO_Init(UART3_GPIO, &GPIO_InitStructure);
+    }       
 #endif /* RT_USING_UART3 */
 
 #if defined(RT_USING_UART4)
@@ -521,6 +560,13 @@ static void GPIO_Configuration(void)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Pin = UART4_GPIO_TX;
     GPIO_Init(UART4_GPIO, &GPIO_InitStructure);
+
+    if (NULL != UART4_OE_GPIO)
+    {
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+        GPIO_InitStructure.GPIO_Pin = UART4_OE_PIN;
+        GPIO_Init(UART4_GPIO, &GPIO_InitStructure);
+    }       
 #endif /* RT_USING_UART4 */
 }
 
@@ -605,7 +651,7 @@ void rt_hw_usart_init(void)
 #if defined(RT_USING_UART2)
     uart = &uart2;
 
-    config.baud_rate = BAUD_RATE_115200;
+    config.baud_rate = BAUD_RATE_9600;
     serial2.ops    = &stm32_uart_ops;
     serial2.config = config;
 

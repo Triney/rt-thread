@@ -19,6 +19,10 @@ if GetDepend(['RT_USING_PIN']):
 if GetDepend('RT_USING_CAN'):
     src += ['bxcan.c']
 
+# add canbus driver.
+if GetDepend('RT_USING_SPI'):
+    src += ['rt_stm32f10x_spi.c']	
+	
 # add Ethernet drivers.
 if GetDepend('RT_USING_LWIP'):
     src += ['dm9000a.c']
