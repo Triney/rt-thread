@@ -23,6 +23,7 @@
 #include <components.h>
 #endif  /* RT_USING_COMPONENTS_INIT */
 
+#include "Service_Rs485.h"
 /*----------------------------------------------*
  * external variables                           *
  *----------------------------------------------*/
@@ -40,6 +41,8 @@
  *----------------------------------------------*/
 rt_sem_t    sem_rs_485_rcv;
 rt_mq_t     mq_rs485_snd;
+
+struct rt_ringbuffer    send_buffer_rb;
 /*----------------------------------------------*
  * module-wide global variables                 *
  *----------------------------------------------*/
@@ -160,6 +163,68 @@ static rt_err_t serial_rx_ind(rt_device_t dev, rt_size_t size) {
     return RT_EOK;
 }
 
+static rt_bool_t protocol_choose(
+    void                    *rcv_frame, 
+    rt_uint8_t               rcv_len,
+    PROTOCOL_PROPERITY_STRU *protocol_info)
+{   
+
+    rt_uint8_t  *receive_from = (rt_uint8_t *)rcv_frame;
+    
+    if ( rcv_len < protocol_info->min_len)
+    {
+        return RT_FALSE;
+    }
+
+    if (E_SOP_PARTICIAL == protocol_info->header_type )
+    {
+        if(0 !=memcmp(receive_from,
+                            &(protocol_info->header_param[0]),
+                            protocol_info->header_len))
+        {
+            return RT_FALSE;
+        }
+    }
+
+    if ( E_EOP_PARTICIAL == protocol_info->ender_type )
+    {
+        if(0 !=memcmp(receive_from + rcv_len - protocol_info->ender_len,
+                            &(protocol_info->ender_param[0]),
+                            protocol_info->ender_len))
+        {
+            return RT_FALSE;
+        }
+    }
+
+    if (RT_NULL != protocol_info->checksum_calc)
+    {
+        rt_uint32_t checksum_calc;
+        rt_uint32_t checksum_received;
+
+        //checksum_received = 
+        memcpy(&checksum_received,
+                receive_from + rcv_len - protocol_info->ender_len - protocol_info->checksum_len,
+                protocol_info->checksum_len);
+
+        checksum_calc = protocol_info->checksum_calc(rcv_frame,rcv_len - protocol_info->checksum_len);
+
+        if ( checksum_received !=  checksum_calc)
+        {
+            return RT_FALSE;
+        }
+        else
+        {
+            return RT_TRUE;
+        }
+        
+    }
+    else
+    {
+        return RT_FALSE;
+    }
+
+}
+
 void Service_Rs485_Rcv_thread(void *parameter)
 {   
     msg_t           msg;
@@ -180,11 +245,45 @@ void Service_Rs485_Rcv_thread(void *parameter)
 
         size = rt_device_read(device, 0, buffer, 64);
 
-        if ( size < 8 )
         {
-            continue;
-        }
+            rt_list_t   *list_node;
 
+            PROTOCOL_PROPERITY_STRU *protocol_node;
+
+            for (list_node = rs_485_protocol_head_node.next; list_node != &rs_485_protocol_head_node; list_node = protocol_node->node.next)
+            {
+                protocol_node = (PROTOCOL_PROPERITY_STRU *)(rt_list_entry(list_node, PROTOCOL_PROPERITY_STRU, node));
+
+                if ( RT_FALSE == protocol_choose(buffer,size,protocol_node) )
+                {
+                    continue;
+                }
+                else
+                {
+                    rt_size_t ack_size;
+                    
+                    protocol_node->get_parameter(buffer,protocol_node->parameter);
+
+                    ack_size= protocol_node->process_handler(protocol_node->parameter,protocol_node->ack);
+                    
+                    if (0 != ack_size)
+                    {   
+                        msg_t   msg;
+                        *(rt_uint32_t *)((rt_uint8_t *)protocol_node->ack + ack_size) = protocol_node->checksum_calc(protocol_node->ack,ack_size);
+                        rt_ringbuffer_put(&send_buffer_rb, protocol_node->ack, ack_size + protocol_node->checksum_len);
+
+                        msg.data_ptr = &send_buffer_rb;
+                        msg.data_size = ack_size + protocol_node->checksum_len;
+                        rt_mq_send(mq_rs485_snd, &msg, sizeof(msg_t));
+                    }
+                    break;
+                }
+            }
+
+
+
+        } 
+        #if 0
         if ( 0xfa == buffer[0] )
         {
             buffer[0] = 0xfe;
@@ -192,6 +291,7 @@ void Service_Rs485_Rcv_thread(void *parameter)
             msg.data_size   = sizeof(buffer);
             rt_mq_send(mq_rs485_snd,&msg,sizeof(msg_t));
         }
+        #endif
     }
 }
 
@@ -207,23 +307,33 @@ void Service_Rs485_Send_thread(void *parameter)
     {
         if (RT_EOK == rt_mq_recv(mq_rs485_snd, &msg, sizeof(msg_t), RT_WAITING_FOREVER))
         {
+            rt_uint8_t  *ptr;
+            //rt_size_t   size;
             GPIO_ResetBits(RS485_OE_GPIO, RS485_OE_PIN);
-            rt_device_write(device, 0, msg.data_ptr, msg.data_size);
+
+            ptr = rt_malloc(msg.data_size);
+
+            //size = 
+            rt_ringbuffer_get(msg.data_ptr, ptr, msg.data_size);
+            
+            rt_device_write(device, 0, ptr, msg.data_size);
+
+            rt_free(ptr);
             GPIO_SetBits(RS485_OE_GPIO, RS485_OE_PIN);
         }
     }
 }
-
-void App_Rs485_RegisterStruct_Init(PROTOCOL_PROPERITY_STRU *param)
+#if 1
+void Service_Rs485_RegisterStruct_Init(PROTOCOL_PROPERITY_STRU *param)
 {    
     memset(param, 0, sizeof(PROTOCOL_PROPERITY_STRU));
 }
 
-void App_Rs485_CMD_Register(PROTOCOL_PROPERITY_STRU *param)
+void Service_Rs485_CMD_Register(PROTOCOL_PROPERITY_STRU *param)
 {    
     PROTOCOL_PROPERITY_STRU *ptr;
 
-    if (RT_NULL == param );
+    if (RT_NULL == param )
     {
         return;
     }
@@ -235,18 +345,31 @@ void App_Rs485_CMD_Register(PROTOCOL_PROPERITY_STRU *param)
         return;
     }
 
+    memcpy(ptr,param,sizeof(PROTOCOL_PROPERITY_STRU));
+
     if (RT_TRUE == rt_list_isempty(&rs_485_protocol_head_node))
     {
-        rt_list_insert_after(rs_485_protocol_head_node, ptr->node);
+        rt_list_insert_after(&rs_485_protocol_head_node, &(ptr->node));
     }
     else
     {
-        while
-    }
-}
+        rt_list_t   *protocol_node;
 
+        PROTOCOL_PROPERITY_STRU *node_end;
+
+        for (protocol_node = rs_485_protocol_head_node.next; protocol_node != &rs_485_protocol_head_node; protocol_node = protocol_node->next)
+        {
+            node_end = (PROTOCOL_PROPERITY_STRU *)(rt_list_entry(protocol_node, PROTOCOL_PROPERITY_STRU, node));
+        }
+
+        rt_list_insert_after(&(node_end->node), &(ptr->node));
+    } 
+}
+#endif
 void App_Rs485_CMD_Process(void)
 {
+    rt_uint8_t     *mem_ptr;
+
     rt_device_t     rs485;
     rt_thread_t     tid;
 
@@ -258,6 +381,11 @@ void App_Rs485_CMD_Process(void)
     sem_rs_485_rcv = rt_sem_create("rs_485_rcv_timeout", 0, RT_IPC_FLAG_FIFO);
 
     mq_rs485_snd = rt_mq_create("rs485_snd", 16, 5, RT_IPC_FLAG_FIFO);
+
+    mem_ptr = rt_malloc(1024);
+    rt_ringbuffer_init( &send_buffer_rb, mem_ptr, 1024);
+
+    rt_list_init(&rs_485_protocol_head_node);
 
     rs485 = rt_device_find("uart2");
 

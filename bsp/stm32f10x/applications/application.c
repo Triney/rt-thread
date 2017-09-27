@@ -44,6 +44,7 @@
 #include "Drv_matrix_key.h"
 #include "Drv_74hc595.h"
 #include "app_test_drv.h"
+#include "App_LDS_Protocol.h"
 
 ALIGN(RT_ALIGN_SIZE)
 static rt_uint8_t led_stack[ 512 ];
@@ -196,6 +197,7 @@ int rt_application_init(void)
     #endif
     
     App_Rs485_CMD_Process();
+    App_LDS_Protocol_Register();
     return 0;
 }
 

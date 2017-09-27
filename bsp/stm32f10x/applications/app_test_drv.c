@@ -144,7 +144,7 @@ void test_74hc595_drv_thread_entry(void *parameter)
         msg.data_ptr = g_buffer;
         msg.data_size   = 2;
         
-        rt_mq_send(mq_rs485_snd,&msg,sizeof(msg_t));
+        //rt_mq_send(mq_rs485_snd,&msg,sizeof(msg_t));
         
     }
 }

@@ -16,7 +16,7 @@
     Modification: Created file
 
 ******************************************************************************/
-
+#include "App_LDS_Protocol.h"
 /*----------------------------------------------*
  * external variables                           *
  *----------------------------------------------*/
@@ -74,6 +74,7 @@ typedef struct dim_param
 typedef struct cmd_field
 {
     rt_uint8_t      header;
+    #pragma anon_unions 
     union
     {
         rt_uint8_t  device_code;
@@ -89,16 +90,21 @@ typedef struct cmd_field
         rt_uint8_t          option_code;
         CTRL_OPCODE_ENUM    ctrl_opcode;
         SETTING_OPCODE_ENUM setting_opcode;
-    }
+    };
     union
     {
         rt_uint8_t      param[3];
         st_dim_param    dim_param;
-    }
+    };
     rt_uint8_t      check_sum;
     
 }st_cmd_field;
 
+typedef struct SETTING_PROCESS_HANDLER
+{
+    SETTING_OPCODE_ENUM                 command;
+    rt_size_t   (*command_handler)(st_cmd_field *parameter,rt_uint8_t *ack_buffer);
+}SETTING_PROCESS_HANDLER_STRU;
 /*----------------------------------------------*
  * project-wide global variables                *
  *----------------------------------------------*/
@@ -106,122 +112,23 @@ typedef struct cmd_field
 /*----------------------------------------------*
  * module-wide global variables                 *
  *----------------------------------------------*/
-
+rt_bool_t   g_is_device_selected = RT_FALSE;
+rt_uint8_t  g_device_box_num     = 0xFF;
 /*----------------------------------------------*
  * constants                                    *
  *----------------------------------------------*/
-typedef enum CTRL_OPCODE
-{
-    E_Ctrl_Opcode_Preset                          = 0xfe,
-    E_Ctrl_Opcode_Fade_area_to_off                = 0xfd,
-    E_Ctrl_Opcode_Program_level_to_preset         = 0xfc,
-    E_Ctrl_Opcode_Reset_to_preset                 = 0xfb,
-    E_Ctrl_Opcode_Configture_DMX                  = 0xfa,
-    E_Ctrl_Opcode_Set_jion                        = 0xf9,
-    E_Ctrl_Opcode_Panel_disable                   = 0xf8,
-    E_Ctrl_Opcode_Panel_enable                    = 0xf7,
-    E_Ctrl_Opcode_Panic                           = 0xf6,
-    E_Ctrl_Opcode_Un_panic                        = 0xf5,
-    E_Ctrl_Opcode_PE_Speed                        = 0xf4,
-    E_Ctrl_Opcode_Suspend_PE                      = 0xf3,
-    E_Ctrl_Opcode_Restart_PE                      = 0xf2,
-    E_Ctrl_Opcode_Set_air_link                    = 0xf1,
-    E_Ctrl_Opcode_Clear_air_link                  = 0xf0,
-    E_Ctrl_Opcode_Request_area_link               = 0xef,
-    E_Ctrl_Opcode_Relply_area_link                = 0xee,
-    E_Ctrl_Opcode_Suspend_motion                  = 0xed,
-    E_Ctrl_Opcode_Resume_motion                   = 0xec,
-    E_Ctrl_Opcode_Disable_motion_detector         = 0xeb,
-    E_Ctrl_Opcode_Disable_motion_detector_this_preset = 0xea,
-    E_Ctrl_Opcode_Enable_motion_detector_current_preset = 0xe9,
-    E_Ctrl_Opcode_Disable_motion_detector_all_preset = 0xe8,
-    E_Ctrl_Opcode_Enable_motion_detector_all_preset  = 0xe7,
-    E_Ctrl_Opcode_Set_rmask                          = 0xe6,
-    E_Ctrl_Opcode_Fade_channel_area_to_level          = 0xe5,
-    E_Ctrl_Opcode_Reply_with_channel_levle            = 0xe4,
-    E_Ctrl_Opcode_Request_channel_level               = 0xe3,
-    E_Ctrl_Opcode_Reply_current_preset                = 0xe2,
-    E_Ctrl_Opcode_Request_current_preset              = 0xe1,
-    E_Ctrl_Opcode_Preset_offset_and_bank              = 0xe0,
-    E_Ctrl_Opcode_Select_current_preset               = 0xdf,
-    E_Ctrl_Opcode_Save_current_preset                   = 0xde,
-    E_Ctrl_Opcode_Restore_saved_preset                  = 0xdd,
-    E_Ctrl_Opcode_Fade_to_off                           = 0xdc,
-    E_Ctrl_Opcode_Fade_to_on                            = 0xdb,
-    E_Ctrl_Opcode_Stop_fade                             = 0xda,
-    E_Ctrl_Opcode_Fade_channel_to_preset                = 0xd9,
-    E_Ctrl_Opcode_Stop_fade_set_toggle_preset           = 0xd8,
-    E_Ctrl_Opcode_Stop_fade_set_currten_preset          = 0xd7,
-    E_Ctrl_Opcode_Fade_channel_to_toggle_preset         = 0xd6,
-    E_Ctrl_Opcode_Fade_channel_to_current_preset        = 0xd5,
-    E_Ctrl_Opcode_Toggle_Channel                        = 0xd4,
-    E_Ctrl_Opcode_Fade_channel_level_0_1_sec            = 0xd3,
-    E_Ctrl_Opcode_Fade_channel_level_1_sec              = 0xd2,
-    E_Ctrl_Opcode_Fade_channel_level_1_min              = 0xd1,
-    E_Ctrl_Opcode_Inc_level                             = 0xd0,
-    E_Ctrl_Opcode_Dec_level                             = 0xcf,
-    E_Ctrl_Opcode_Fade_area                             = 0xce,
-    E_Ctrl_Opcode_Stop_fade_area                        = 0xcd,                 
-}CTRL_OPCODE_ENUM;
 
-typedef enum SETTING_OPCODE
-{
-    E_Opcode_Device_Identify                 = 0xfe,
-    E_Opcode_Setup                           = 0xfd,
-    E_Opcode_Reboot_Device                   = 0xfc,
-    E_Opcode_Read_EEPROM                     = 0xfb,
-    E_Opcode_Write_EEPROM                    = 0xfa,
-    E_Opcode_Echo_EEPROM                     = 0xf9,
-    E_Opcode_Vrms_Request                    = 0xf8,
-    E_Opcode_Phase_A_Vrms                    = 0xf7,
-    E_Opcode_CALIBRATE_Device_Phase_to_Vrms  = 0xf6,
-    E_Opcode_Light_Level_Request             = 0xf5,
-    E_Opcode_Light_Level_of_Device_Reply     = 0xf4,
-    E_Opcode_DMX_Port_Control                = 0xf3,
-    E_Opcode_DMX_Port_Scene_Capture          = 0xf2,     
-    E_Opcode_Start_Task                      = 0xf1,
-    E_Opcode_Stop_Task                       = 0xf0,
-    E_Opcode_Suspend_Task                    = 0xef,
-    E_Opcode_Resume_Task                     = 0xee,
-    E_Opcode_Enable_Event                    = 0xed,
-    E_Opcode_Disable_Event                   = 0xec,
-    E_Opcode_Trigger_Event                   = 0xeb,
-    E_Opcode_Flash_Read                      = 0xea,
-    E_Opcode_Flash_Read_Ack                  = 0xe9,
-    E_Opcode_Flash_Program_Enable            = 0xe8,
-    E_Opcode_Flash_Prog_Enable_Ack           = 0xe7,
-    E_Opcode_Flash_Write                     = 0xe6,
-    E_Opcode_Flash_Write_Ack                 = 0xe5,
-    E_Opcode_Flash_Erase                     = 0xe4,
-    E_Opcode_Flash_Erase_Ack                 = 0xe3,
-    E_Opcode_Read_RAM                        = 0xe2,
-    E_Opcode_Write_RAM                       = 0xe1,
-    E_Opcode_Echo_RAM                        = 0xe0,
-    E_Opcode_BLOCK_EE_Read_Enable            = 0xdf,
-    E_Opcode_BLOCK_EE_Read_Ack               = 0xde,
-    E_Opcode_BLOCK_EE_Write_Enable           = 0xdd,
-    E_Opcode_BLOCK_EE_Write_Ack              = 0xdc,
-    E_Opcode_BLOCK_Flash_Read_Enable         = 0xdb,
-    E_Opcode_BLOCK_Flash_Read_Ack            = 0xda,
-    E_Opcode_BLOCK_Flash_Write_Enable        = 0xd9,
-    E_Opcode_BLOCK_Flash_Write_Ack           = 0xd8,
-    E_Opcode_Request_Device_Status           = 0xd7,
-    E_Opcode_Report_Device_Status            = 0xd6,
-    E_Opcode_Request_Channel_Status          = 0xcb,
-    E_Opcode_Request_Firmware_version        = 0xfa,
-    E_Opcode_Request_Physical_Channel_Level  = 0xb8,
-    E_Opcode_Set_Physical_Channel_Level      = 0xb7,
-    E_Opcode_DM320_dali_cmd                  = 0x6f
-}SETTING_OPCODE_ENUM;
 /*----------------------------------------------*
  * macros                                       *
  *----------------------------------------------*/
+#define LDS_COMMAND_MAX_LEN 8
 #define MAX_CHANNEL_NUM     12
+#define DEVICE_CODE         0x94
 /*----------------------------------------------*
  * routines' implementations                    *
  *----------------------------------------------*/
 
-rt_uint8_t LDSCheckSum(rt_uint8_t *buffer,rt_uint8_t Num)
+rt_uint32_t LDSCheckSum(rt_uint8_t *buffer,rt_uint32_t Num)
 {
 	rt_uint8_t i,sum=0;
 	for(i=Num;i!=0;i--)
@@ -229,7 +136,7 @@ rt_uint8_t LDSCheckSum(rt_uint8_t *buffer,rt_uint8_t Num)
 		sum+=*buffer++;
 	}
 	sum = 256-sum;
-	return sum;	
+	return (rt_uint32_t)sum;	
 }
 
 rt_bool_t   IsChannelAreaAccept(rt_uint8_t channel,rt_uint8_t area)
@@ -240,6 +147,75 @@ rt_bool_t   IsChannelAreaAccept(rt_uint8_t channel,rt_uint8_t area)
 rt_bool_t   IsChannelAppendAreaAccpet(rt_uint8_t channel,rt_uint8_t area)
 {    
     return RT_TRUE;
+}
+
+/*****************************************************************************
+ Prototype    : IsDeviceSelect
+ Description  : get current device select status
+ Input        : void  
+ Output       : None
+ Return Value : 
+ Calls        : 
+ Called By    : 
+ 
+  History        :
+  1.Date         : 2017/9/26
+    Author       : Enix
+    Modification : Created function
+
+*****************************************************************************/
+rt_bool_t IsDeviceSelect(void)
+{
+    return g_is_device_selected;
+}
+
+/*****************************************************************************
+ Prototype    : SetDeviceSelect
+ Description  : set device selected if cmd parameter want to select device
+ Input        : st_cmd_field *parameter  
+ Output       : None
+ Return Value : RT_TRUE     device selected
+                RT_FALSE    device unselected
+ Calls        : 
+ Called By    : 
+ 
+  History        :
+  1.Date         : 2017/9/26
+    Author       : Enix
+    Modification : Created function
+
+*****************************************************************************/
+rt_bool_t SetDeviceSelect(st_cmd_field *parameter)
+{
+    rt_bool_t   ret;
+    if ( (0xAA == parameter->device_code)
+        &&(0x55 == parameter->box_num))
+    {
+        ret = g_is_device_selected = RT_TRUE;
+
+    }    
+    else if ( DEVICE_CODE != parameter->device_code)
+    {
+        ret = g_is_device_selected = RT_FALSE;
+
+    }
+    else if (g_device_box_num == parameter->box_num)
+    {
+        ret = g_is_device_selected = RT_TRUE;
+
+    }
+    else
+    {
+        ret = g_is_device_selected = RT_FALSE;
+    }
+
+    return ret;
+    
+}
+
+void SetDeviceDeselectForce(void)
+{    
+    g_is_device_selected = RT_FALSE;
 }
 
 void App_LDSCmd_Ctrl_Preset(void *parameter)
@@ -258,3 +234,130 @@ void App_LDSCmd_Ctrl_Preset(void *parameter)
 
 }
 
+rt_size_t App_LDSCmd_Setting_Setup(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{    
+    if ( 0x01 == parameter->param[0]);
+    {
+        if ( 0x01 == parameter->param[1])
+        {
+            SetDeviceSelect(parameter);
+        }
+        else
+        {
+            SetDeviceDeselectForce();
+        }
+    }
+    return 0;
+}
+
+rt_size_t App_LDSCmd_Reboot(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{    
+    if ( RT_TRUE == IsDeviceSelect())
+    {
+        NVIC_SystemReset();
+    }
+    return 0;
+}
+
+rt_size_t App_LDS_CMD_ReadEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{    
+
+        rt_uint32_t address;
+        rt_device_t device;
+
+        address  = parameter->param[1];
+        address  = address<<8;
+        address |= parameter->param[0];
+
+        device = rt_device_find("Flash0");
+
+        if  (RT_NULL != device )
+        {
+            rt_device_read(device, address, ack_buffer + 6, 1);
+            memcpy(ack_buffer,parameter,6);
+            ack_buffer[3] = E_Opcode_Echo_EEPROM;
+            return 7;
+        }
+    
+    return 0;
+}
+
+rt_size_t App_LDS_CMD_WriteEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{    
+    if ( RT_TRUE == IsDeviceSelect())
+    {
+        rt_uint32_t address;
+        rt_device_t device;
+
+        address  = parameter->param[1];
+        address  = address<<8;
+        address |= parameter->param[0];
+
+        device = rt_device_find("Flash0");
+
+        if  (RT_NULL != device )
+        {
+            rt_device_write(device, address, ack_buffer + 6, 1);
+            memcpy(ack_buffer,parameter,6);
+            rt_device_read(device, address, ack_buffer + 6, 1);
+            ack_buffer[3] = E_Opcode_Echo_EEPROM;
+            return 7;
+        }
+    }
+    return 0;
+}
+
+const SETTING_PROCESS_HANDLER_STRU setting_handler_array[]=
+{    
+    {E_Opcode_Setup         ,App_LDSCmd_Setting_Setup},
+    {E_Opcode_Reboot_Device ,App_LDSCmd_Reboot       },
+    {E_Opcode_Read_EEPROM   ,App_LDS_CMD_ReadEE      },
+    {E_Opcode_Write_EEPROM  ,App_LDS_CMD_WriteEE     },
+};
+rt_size_t   setting_hanler_cnt = sizeof(setting_handler_array)/sizeof(SETTING_PROCESS_HANDLER_STRU);
+rt_size_t App_LDS_Setting_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{
+    rt_uint8_t  i;
+    
+    for ( i = 0 ; i < setting_hanler_cnt ; i++ )
+    {
+        if (setting_handler_array[i].command == parameter->option_code )
+        {
+            return setting_handler_array[i].command_handler(parameter,ack_buffer);
+        }
+    }
+    return RT_FALSE;
+}    
+
+void App_LDS_GetParameter(rt_uint8_t *in, st_cmd_field *param)
+{    
+    memcpy(param,in,8);
+}
+
+void App_LDS_Protocol_Register(void)
+{    
+    PROTOCOL_PROPERITY_STRU init_struct;
+    st_cmd_field           *param_ptr;
+    rt_uint8_t             *ack_ptr;
+
+    Service_Rs485_RegisterStruct_Init(&init_struct);
+
+    init_struct.header_type = E_SOP_PARTICIAL;
+    init_struct.header_len  = 1;
+    init_struct.header_param[0] = 0xFA;
+
+    init_struct.checksum_len = 1;
+    init_struct.checksum_calc = LDSCheckSum;
+
+    ack_ptr = rt_malloc(LDS_COMMAND_MAX_LEN + 4); // protect overflow
+
+    init_struct.ack = ack_ptr;
+
+    param_ptr = rt_malloc(sizeof(st_cmd_field));
+    init_struct.parameter = param_ptr;
+    init_struct.get_parameter = App_LDS_GetParameter;
+    
+    init_struct.process_handler = App_LDS_Setting_Handler;
+    
+    Service_Rs485_CMD_Register(&init_struct);
+}
