@@ -265,18 +265,28 @@ rt_size_t App_LDS_CMD_ReadEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
         rt_uint32_t address;
         rt_device_t device;
 
-        address  = parameter->param[1];
+        address  = (rt_uint32_t)parameter->param[0];
         address  = address<<8;
-        address |= parameter->param[0];
+        address |= (rt_uint32_t)parameter->param[1];
 
         device = rt_device_find("Flash0");
 
         if  (RT_NULL != device )
         {
-            rt_device_read(device, address, ack_buffer + 6, 1);
-            memcpy(ack_buffer,parameter,6);
-            ack_buffer[3] = E_Opcode_Echo_EEPROM;
-            return 7;
+            if ( RT_EOK == rt_device_open(device, 0))
+            {   
+                extern uint8_t  tmp_data[4096];
+                rt_device_read(device, address, tmp_data, 1);
+                rt_device_close(device);
+                memcpy(ack_buffer,parameter,6);
+                memcpy(ack_buffer+6 ,tmp_data,1);
+                ack_buffer[3] = E_Opcode_Echo_EEPROM;
+                return 7;
+            }
+            else
+            {
+                return 0;
+            }
         }
     
     return 0;
@@ -289,19 +299,29 @@ rt_size_t App_LDS_CMD_WriteEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
         rt_uint32_t address;
         rt_device_t device;
 
-        address  = parameter->param[1];
+        address  = (rt_uint32_t)parameter->param[0];
         address  = address<<8;
-        address |= parameter->param[0];
+        address |= (rt_uint32_t)parameter->param[1];
 
         device = rt_device_find("Flash0");
 
         if  (RT_NULL != device )
         {
-            rt_device_write(device, address, ack_buffer + 6, 1);
-            memcpy(ack_buffer,parameter,6);
-            rt_device_read(device, address, ack_buffer + 6, 1);
-            ack_buffer[3] = E_Opcode_Echo_EEPROM;
-            return 7;
+            if ( RT_EOK == rt_device_open(device, 0))
+            {
+                extern uint8_t  tmp_data[4096];
+                rt_device_write(device, address, parameter->param + 2, 1);
+                memcpy(ack_buffer,parameter,6);
+                rt_device_read(device, address, tmp_data, 1);
+                memcpy(ack_buffer+6 ,tmp_data,1);
+                rt_device_close(device);
+                ack_buffer[3] = E_Opcode_Echo_EEPROM;
+                return 7;
+            }
+            else
+            {
+                return 0;
+            }
         }
     }
     return 0;

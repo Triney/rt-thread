@@ -268,8 +268,16 @@ void Service_Rs485_Rcv_thread(void *parameter)
                     
                     if (0 != ack_size)
                     {   
+                        rt_uint8_t      *buff;
+                        rt_uint32_t     checksum;
                         msg_t   msg;
-                        *(rt_uint32_t *)((rt_uint8_t *)protocol_node->ack + ack_size) = protocol_node->checksum_calc(protocol_node->ack,ack_size);
+                        checksum = protocol_node->checksum_calc((rt_uint8_t *)(protocol_node->ack),ack_size);
+                        
+                        buff = (rt_uint8_t *)((rt_uint8_t *)(protocol_node->ack) + ack_size);
+                        buff[0] = (checksum &0xff);
+                        buff[1] = ((checksum>>8) &0xff);
+                        buff[2] = ((checksum>>16) &0xff);
+                        buff[3] = ((checksum>>24) &0xff);
                         rt_ringbuffer_put(&send_buffer_rb, protocol_node->ack, ack_size + protocol_node->checksum_len);
 
                         msg.data_ptr = &send_buffer_rb;
@@ -400,7 +408,7 @@ void App_Rs485_CMD_Process(void)
 
     tid = rt_thread_create("rs485_rcv",
                            Service_Rs485_Rcv_thread, 
-                           0, 1024, 25, 5);
+                           0, 8192, 25, 5);
     if ( RT_NULL != tid)
     {
         rt_thread_startup(tid);

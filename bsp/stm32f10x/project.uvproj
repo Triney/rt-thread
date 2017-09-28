@@ -438,6 +438,11 @@
               <FileType>1</FileType>
               <FilePath>.\applications\Service_rs485.c</FilePath>
             </File>
+            <File>
+              <FileName>App_LDS_Protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\applications\App_LDS_Protocol.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

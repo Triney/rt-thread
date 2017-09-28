@@ -484,7 +484,6 @@ void extFlash_wr(uint32_t addr, uint8_t data)
 }
 FINSH_FUNCTION_EXPORT(extFlash_wr, write a byte date to extFlash);
 
-static uint8_t  tmp[4096];
 void extFlash_rd(uint32_t addr, uint32_t size)
 {
     rt_device_t     device;
@@ -492,12 +491,11 @@ void extFlash_rd(uint32_t addr, uint32_t size)
   
     size = 1;
     
-    data = tmp;
     device = rt_device_find("Flash0");
 
     if ( device != RT_NULL)
     {
-        rt_kprintf("0x%08x\n",device);
+        //rt_kprintf("0x%08x\n",device);
         if ( RT_EOK == rt_device_open(device, 0))
         {
             data = tmp_data;
