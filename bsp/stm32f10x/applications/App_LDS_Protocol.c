@@ -281,6 +281,7 @@ rt_size_t App_LDS_CMD_ReadEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
                 memcpy(ack_buffer,parameter,6);
                 memcpy(ack_buffer+6 ,tmp_data,1);
                 ack_buffer[3] = E_Opcode_Echo_EEPROM;
+
                 return 7;
             }
             else
