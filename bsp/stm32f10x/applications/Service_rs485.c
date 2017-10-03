@@ -227,7 +227,7 @@ static rt_bool_t protocol_choose(
 
 void Service_Rs485_Rcv_thread(void *parameter)
 {   
-    msg_t           msg;
+//    msg_t           msg;
 
     rt_size_t       size;
     rt_device_t     device;
@@ -408,7 +408,7 @@ void App_Rs485_CMD_Process(void)
 
     tid = rt_thread_create("rs485_rcv",
                            Service_Rs485_Rcv_thread, 
-                           0, 8192, 25, 5);
+                           0, 1024, 25, 5);
     if ( RT_NULL != tid)
     {
         rt_thread_startup(tid);

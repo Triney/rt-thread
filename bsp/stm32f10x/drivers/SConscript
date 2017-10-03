@@ -10,6 +10,8 @@ board.c
 stm32f10x_it.c
 led.c
 usart.c
+Drv_74hc595.c
+Drv_matrix_key.c
 """)
 
 if GetDepend(['RT_USING_PIN']):
@@ -35,6 +37,9 @@ if GetDepend('RT_USING_DFS'):
 if GetDepend('RT_USING_RTC'):
     src += ['rtc.c']
 
+if GetDepend('RT_USING_I2C'):
+	src += ['stm32f1_i2c.c']
+	
 # add Ethernet drivers.
 if GetDepend('RT_USING_RTGUI'):
     src += ['touch.c']

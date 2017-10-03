@@ -108,11 +108,11 @@ typedef struct SETTING_PROCESS_HANDLER
 /*----------------------------------------------*
  * project-wide global variables                *
  *----------------------------------------------*/
-
+channelDataType     device_channel[MAX_CHANNEL_NUM];
 /*----------------------------------------------*
  * module-wide global variables                 *
  *----------------------------------------------*/
-rt_bool_t   g_is_device_selected = RT_FALSE;
+DEVICE_SETTING_FLAG_STRU              device_settiong_option; 
 rt_uint8_t  g_device_box_num     = 0xFF;
 /*----------------------------------------------*
  * constants                                    *
@@ -121,9 +121,7 @@ rt_uint8_t  g_device_box_num     = 0xFF;
 /*----------------------------------------------*
  * macros                                       *
  *----------------------------------------------*/
-#define LDS_COMMAND_MAX_LEN 8
-#define MAX_CHANNEL_NUM     12
-#define DEVICE_CODE         0x94
+
 /*----------------------------------------------*
  * routines' implementations                    *
  *----------------------------------------------*/
@@ -141,7 +139,14 @@ rt_uint32_t LDSCheckSum(rt_uint8_t *buffer,rt_uint32_t Num)
 
 rt_bool_t   IsChannelAreaAccept(rt_uint8_t channel,rt_uint8_t area)
 {
-    return RT_TRUE;
+    if ( device_channel[channel] == area)
+    {
+        return RT_TRUE; 
+    }
+    else
+    {
+        return RT_FALSE;
+    }
 }
 
 rt_bool_t   IsChannelAppendAreaAccpet(rt_uint8_t channel,rt_uint8_t area)
@@ -166,7 +171,7 @@ rt_bool_t   IsChannelAppendAreaAccpet(rt_uint8_t channel,rt_uint8_t area)
 *****************************************************************************/
 rt_bool_t IsDeviceSelect(void)
 {
-    return g_is_device_selected;
+    return device_settiong_option.is_device_selected;
 }
 
 /*****************************************************************************
@@ -191,22 +196,22 @@ rt_bool_t SetDeviceSelect(st_cmd_field *parameter)
     if ( (0xAA == parameter->device_code)
         &&(0x55 == parameter->box_num))
     {
-        ret = g_is_device_selected = RT_TRUE;
+        ret = device_settiong_option.is_device_selected = RT_TRUE;
 
     }    
     else if ( DEVICE_CODE != parameter->device_code)
     {
-        ret = g_is_device_selected = RT_FALSE;
+        ret = device_settiong_option.is_device_selected = RT_FALSE;
 
     }
     else if (g_device_box_num == parameter->box_num)
     {
-        ret = g_is_device_selected = RT_TRUE;
+        ret = device_settiong_option.is_device_selected = RT_TRUE;
 
     }
     else
     {
-        ret = g_is_device_selected = RT_FALSE;
+        ret = device_settiong_option.is_device_selected = RT_FALSE;
     }
 
     return ret;
@@ -215,23 +220,56 @@ rt_bool_t SetDeviceSelect(st_cmd_field *parameter)
 
 void SetDeviceDeselectForce(void)
 {    
-    g_is_device_selected = RT_FALSE;
+    device_settiong_option.is_device_selected = RT_FALSE;
 }
 
-void App_LDSCmd_Ctrl_Preset(void *parameter)
+void SetBlockRWAddress(rt_uint16_t address)
+{    
+    device_settiong_option.is_device_EE_BlockOption = RT_TRUE;
+    device_settiong_option.block_ee_address         = address;
+}
+
+void SetBlockRWExit(void)
+{    
+    device_settiong_option.is_device_EE_BlockOption = RT_FALSE;
+    device_settiong_option.block_ee_address         = 0;
+}
+
+rt_bool_t IsDeviceEEBlockOptionEnable(void)
+{    
+    return device_settiong_option.is_device_EE_BlockOption;
+}
+
+rt_size_t App_LDSCmd_Ctrl_Preset(void *parameter,rt_uint8_t *ack_buffer)
 {
     st_cmd_field *rcv_cmd = (st_cmd_field *)parameter;
 
-    rt_uint8_t  i;
+    rt_uint8_t      i;
+    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
+    rt_uint32_t     fade_rate;
+
+    if ( rcv_cmd->dim_param.bank >95)
+    {
+        return 0;
+    }
+
+    fade_rate = rcv_cmd->dim_param.fade_rate_low;
+    fade_rate <<=8;
+    fade_rate = rcv_cmd->dim_param.fade_rate_high;
+
+    fade_rate = fade_rate * RT_TICK_PER_SECOND / 50;
+    
     for ( i = 0 ; i < MAX_CHANNEL_NUM; i++ )
     {
         if ((RT_TRUE == IsChannelAreaAccept(i, rcv_cmd->area))
             &&(RT_TRUE == IsChannelAppendAreaAccpet(i, rcv_cmd->append_area)))
         {
-            ;
+            device_channel[i].;
         }
     }
 
+
+    
 }
 
 rt_size_t App_LDSCmd_Setting_Setup(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
@@ -269,7 +307,7 @@ rt_size_t App_LDS_CMD_ReadEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
         address  = address<<8;
         address |= (rt_uint32_t)parameter->param[1];
 
-        device = rt_device_find("Flash0");
+        device = rt_device_find("EEP");
 
         if  (RT_NULL != device )
         {
@@ -304,7 +342,7 @@ rt_size_t App_LDS_CMD_WriteEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
         address  = address<<8;
         address |= (rt_uint32_t)parameter->param[1];
 
-        device = rt_device_find("Flash0");
+        device = rt_device_find("EEP");
 
         if  (RT_NULL != device )
         {
@@ -327,13 +365,139 @@ rt_size_t App_LDS_CMD_WriteEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
     }
     return 0;
 }
+rt_size_t App_LDS_CMD_BlockReadEEEnable(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{    
+    if ( RT_TRUE == IsDeviceSelect())
+    {
+        rt_uint16_t address;
+        rt_device_t device;
 
+        address  = (rt_uint32_t)parameter->param[0];
+        address  = address<<8;
+        address |= (rt_uint32_t)parameter->param[1];
+
+        device = rt_device_find("EEP");
+
+        if  (RT_NULL != device )
+        {
+            SetBlockRWAddress(address);
+            
+            memcpy(ack_buffer,parameter,6);
+            
+            ack_buffer[3] = E_Opcode_BLOCK_EE_Read_Ack;
+            ack_buffer[6] = 0;
+            return 7;            
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+rt_size_t App_LDS_CMD_BlockReadEEAck(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{    
+    if ( RT_TRUE == IsDeviceSelect())
+    {
+        rt_uint16_t address;
+        rt_device_t device;
+
+        if (RT_FALSE == IsDeviceEEBlockOptionEnable() )
+        {
+            return 0;
+        }
+
+        address  = (rt_uint32_t)parameter->param[0];
+        address  = address<<8;
+        address |= (rt_uint32_t)parameter->param[1];
+
+        device = rt_device_find("EEP");
+
+        if  (RT_NULL != device )
+        {
+            extern rt_uint8_t  tmp_data[4096];
+            SetBlockRWAddress(address);
+
+            if ( RT_EOK == rt_device_open(device, 0))
+            {
+                rt_device_read(device, address, tmp_data, 6);
+                rt_device_close(device);
+                
+                ack_buffer[0] = 0xFC;
+                memcpy(ack_buffer + 1, tmp_data,6);
+                return 7;            
+            }
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+rt_size_t App_LDS_CMD_BlockWriteEEEnable(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{    
+    if ( RT_TRUE == IsDeviceSelect())
+    {
+        rt_uint16_t address;
+        rt_device_t device;
+
+        address  = (rt_uint32_t)parameter->param[0];
+        address  = address<<8;
+        address |= (rt_uint32_t)parameter->param[1];
+
+        device = rt_device_find("EEP");
+
+        if  (RT_NULL != device )
+        {
+            SetBlockRWAddress(address);
+            
+            memcpy(ack_buffer,parameter,6);
+
+            ack_buffer[3] = E_Opcode_BLOCK_EE_Write_Ack;
+            ack_buffer[6] = 0;
+            return 7;            
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+rt_size_t App_LDS_CMD_Requset_Version(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{ 
+    ack_buffer[0] = 0xFA;
+    ack_buffer[1] = DEVICE_CODE;
+    ack_buffer[2] = g_device_box_num;
+    ack_buffer[3] = E_Opcode_Device_Identify;
+    ack_buffer[4] = 1;
+    ack_buffer[5] = 0;            
+    ack_buffer[6] = 0;
+    return 7;
+}
 const SETTING_PROCESS_HANDLER_STRU setting_handler_array[]=
 {    
-    {E_Opcode_Setup         ,App_LDSCmd_Setting_Setup},
-    {E_Opcode_Reboot_Device ,App_LDSCmd_Reboot       },
-    {E_Opcode_Read_EEPROM   ,App_LDS_CMD_ReadEE      },
-    {E_Opcode_Write_EEPROM  ,App_LDS_CMD_WriteEE     },
+    {E_Opcode_Setup                 ,App_LDSCmd_Setting_Setup},
+    {E_Opcode_Reboot_Device         ,App_LDSCmd_Reboot       },
+    {E_Opcode_Read_EEPROM           ,App_LDS_CMD_ReadEE      },
+    {E_Opcode_Write_EEPROM          ,App_LDS_CMD_WriteEE     },
+    {E_Opcode_BLOCK_EE_Read_Enable  ,App_LDS_CMD_BlockReadEEEnable     },
+    {E_Opcode_BLOCK_EE_Write_Enable ,App_LDS_CMD_BlockWriteEEEnable     },
+    {E_Opcode_BLOCK_EE_Read_Ack     ,App_LDS_CMD_BlockReadEEAck},
+    {E_Opcode_Request_Firmware_version,App_LDS_CMD_Requset_Version},
 };
 rt_size_t   setting_hanler_cnt = sizeof(setting_handler_array)/sizeof(SETTING_PROCESS_HANDLER_STRU);
 rt_size_t App_LDS_Setting_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
@@ -347,8 +511,73 @@ rt_size_t App_LDS_Setting_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buffer
             return setting_handler_array[i].command_handler(parameter,ack_buffer);
         }
     }
-    return RT_FALSE;
-}    
+    return 0;
+}
+rt_size_t App_LDS_BlockWrite_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{   
+    #define EE_PAGE_SIZE    16
+    if ( RT_TRUE == IsDeviceSelect())
+    {
+        rt_uint8_t  temp[8];
+        rt_uint8_t *in;
+
+        if (RT_FALSE == IsDeviceEEBlockOptionEnable())
+        {
+            return 0;
+        }
+        else
+        {    
+            rt_uint16_t     address;
+            rt_uint16_t     i,j;
+            rt_device_t     device;
+
+            in = (rt_uint8_t *)parameter;
+            memcpy(temp,in+1,6);
+
+            address = device_settiong_option.block_ee_address;
+                
+            device = rt_device_find("EEP");
+            if  (RT_NULL == device )
+            {
+                return 0;
+            }
+            
+    		i = address%256;
+    		j = i-(i>>4)*16+5;
+    		if(j < 16)
+    		{
+    			rt_device_write(device,address,temp,6);
+    		}
+    		else
+    		{
+    			i=j-15;
+    			j=6-i;
+    			rt_device_write(device,address
+    								,temp
+    								,j);
+
+    			rt_thread_delay(1);
+
+    			rt_device_write(device,address+j
+    								,temp+j
+    								,i);
+    		}
+                                        
+            ack_buffer[0] = 0xFA;
+            ack_buffer[1] = DEVICE_CODE;
+            ack_buffer[2] = g_device_box_num;
+            ack_buffer[3] = E_Opcode_BLOCK_EE_Write_Ack;
+            ack_buffer[4] = (address >> 8)&0xFF;
+            ack_buffer[5] = (address )&0xFF;            
+            ack_buffer[6] = 0;
+
+            address += 6;
+            SetBlockRWAddress(address);
+            return 7;  
+        }
+    }
+    return 0;
+}
 
 void App_LDS_GetParameter(rt_uint8_t *in, st_cmd_field *param)
 {    
@@ -381,4 +610,10 @@ void App_LDS_Protocol_Register(void)
     init_struct.process_handler = App_LDS_Setting_Handler;
     
     Service_Rs485_CMD_Register(&init_struct);
+
+    init_struct.header_param[0] = 0xFC;
+    init_struct.process_handler = App_LDS_BlockWrite_Handler;
+    Service_Rs485_CMD_Register(&init_struct);
+
+    
 }

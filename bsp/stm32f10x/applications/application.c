@@ -45,6 +45,8 @@
 #include "Drv_74hc595.h"
 #include "app_test_drv.h"
 #include "App_LDS_Protocol.h"
+#include "fm24clxx.h"
+
 
 ALIGN(RT_ALIGN_SIZE)
 static rt_uint8_t led_stack[ 512 ];
@@ -90,7 +92,14 @@ void cali_store(struct calibration_data *data)
                data->max_y);
 }
 #endif /* RT_USING_RTGUI */
-
+#ifdef RT_USING_I2C
+ struct fm24clxx_config fm24cl64_cfg =
+{
+    .size  = 8 * 1024,
+    .addr  = 0x50,
+    .flags = 0,
+};
+#endif
 void rt_init_thread_entry(void* parameter)
 {
 #ifdef RT_USING_COMPONENTS_INIT
@@ -105,6 +114,9 @@ void rt_init_thread_entry(void* parameter)
     #endif
 #endif    
     
+#ifdef RT_USING_I2C     
+    fm24clxx_register("EEP","i2c1",(void *)(&fm24cl64_cfg));
+#endif    
     /* Filesystem Initialization */
 #if defined(RT_USING_DFS) && defined(RT_USING_DFS_ELMFAT)
     /* mount sd card fat partition 1 as root directory */

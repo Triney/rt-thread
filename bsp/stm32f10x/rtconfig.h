@@ -86,6 +86,11 @@
 #define RT_USING_W25QXX
 //#define RT_USING_CAN
 
+#define RT_USING_I2C
+#define RT_USING_I2C_BITOPS
+
+#define RT_I2C_DEBUG
+
 #define RT_CAN_USING_BUS_HOOK
 
 #define RT_CAN_USING_HDR

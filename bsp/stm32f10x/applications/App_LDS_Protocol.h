@@ -16,7 +16,10 @@
     Modification: Created file
 
 ******************************************************************************/
+#ifndef __APP_LDS_PROTOCOL_H__
+#define __APP_LDS_PROTOCOL_H__
 
+#include "Service_rs485.h"
 /*----------------------------------------------*
  * external variables                           *
  *----------------------------------------------*/
@@ -28,7 +31,25 @@
 /*----------------------------------------------*
  * internal routine prototypes                  *
  *----------------------------------------------*/
+typedef struct DEVICE_SETTING_FLAG
+{
+    rt_uint16_t     reserved:14;
+    rt_uint16_t     is_device_selected:1;
+    rt_uint16_t     is_device_EE_BlockOption:1;
 
+    rt_uint16_t     block_ee_address;
+}DEVICE_SETTING_FLAG_STRU;
+
+typedef struct DEVICE_PRIORITY_REF
+{
+    rt_uint8_t      Device_code;
+    rt_uint8_t      Device_box_num;
+    union
+    {    
+        rt_uint16_t     Firmware_version;
+        rt_uint8_t      Firmware_Ver[2];
+    };
+}DEVICE_PRIORITY_REF_STRU;
 /*----------------------------------------------*
  * project-wide global variables                *
  *----------------------------------------------*/
@@ -146,15 +167,13 @@ typedef enum SETTING_OPCODE
 /*----------------------------------------------*
  * macros                                       *
  *----------------------------------------------*/
-
+#define LDS_COMMAND_MAX_LEN 8
+#define MAX_CHANNEL_NUM     12
+#define DEVICE_CODE         0x94
 /*----------------------------------------------*
  * routines' implementations                    *
  *----------------------------------------------*/
 
-#ifndef __APP_LDS_PROTOCOL_H__
-#define __APP_LDS_PROTOCOL_H__
-
-#include "Service_rs485.h"
 
 #ifdef __cplusplus
 #if __cplusplus

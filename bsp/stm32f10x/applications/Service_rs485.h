@@ -81,7 +81,7 @@ typedef struct PROTOCOL_PROPERITY
     
     rt_uint32_t     (*checksum_calc)(void *p_buffer,rt_uint32_t len);
     void            (*get_parameter)(rt_uint8_t *in,void * out);
-    rt_bool_t       (*process_handler)(void *parameter,void *ack);
+    rt_size_t       (*process_handler)(void *parameter,void *ack);
     void            *parameter;
 }PROTOCOL_PROPERITY_STRU;
 /*----------------------------------------------*

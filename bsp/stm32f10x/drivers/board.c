@@ -22,6 +22,8 @@
 #include "usart.h"
 #include "rt_stm32f10x_spi.h"
 
+#include "stm32f1_i2c.h"
+
 #ifdef  RT_USING_COMPONENTS_INIT
 #include <components.h>
 #endif  /* RT_USING_COMPONENTS_INIT */
@@ -190,7 +192,10 @@ void rt_hw_board_init(void)
     rt_console_set_device(RT_CONSOLE_DEVICE_NAME);
     
     rt_stm32f10x_spi_init();
-
+    
+    //stm32_i2c_register(I2C1,100000,"i2c1");
+    rt_hw_i2c_init();
+    
 #ifdef RT_USING_COMPONENTS_INIT
     rt_components_board_init();
 #endif
