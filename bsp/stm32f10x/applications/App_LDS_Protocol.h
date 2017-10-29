@@ -20,6 +20,7 @@
 #define __APP_LDS_PROTOCOL_H__
 
 #include "Service_rs485.h"
+#include "App_test_drv.h"
 /*----------------------------------------------*
  * external variables                           *
  *----------------------------------------------*/
@@ -44,11 +45,13 @@ typedef struct DEVICE_PRIORITY_REF
 {
     rt_uint8_t      Device_code;
     rt_uint8_t      Device_box_num;
-    union
-    {    
-        rt_uint16_t     Firmware_version;
-        rt_uint8_t      Firmware_Ver[2];
-    };
+    rt_uint16_t     Firmware_version;
+
+    rt_uint16_t     MaxByteNum;
+    rt_uint8_t      MaxPresetNum;
+    rt_uint8_t      StartDelay;
+    
+    rt_uint8_t      PresetOffset;
 }DEVICE_PRIORITY_REF_STRU;
 /*----------------------------------------------*
  * project-wide global variables                *
@@ -57,7 +60,7 @@ typedef struct DEVICE_PRIORITY_REF
 /*----------------------------------------------*
  * module-wide global variables                 *
  *----------------------------------------------*/
-
+extern DEVICE_PRIORITY_REF_STRU    g_device_setting_ref;
 /*----------------------------------------------*
  * constants                                    *
  *----------------------------------------------*/
@@ -106,9 +109,9 @@ typedef enum CTRL_OPCODE
     E_Ctrl_Opcode_Fade_channel_to_toggle_preset         = 0xd6,
     E_Ctrl_Opcode_Fade_channel_to_current_preset        = 0xd5,
     E_Ctrl_Opcode_Toggle_Channel                        = 0xd4,
-    E_Ctrl_Opcode_Fade_channel_level_0_1_sec            = 0xd3,
-    E_Ctrl_Opcode_Fade_channel_level_1_sec              = 0xd2,
-    E_Ctrl_Opcode_Fade_channel_level_1_min              = 0xd1,
+    E_Ctrl_Opcode_Fade_CH_lvl_0_1_sec                   = 0xd3,
+    E_Ctrl_Opcode_Fade_CH_lvl_1_sec                     = 0xd2,
+    E_Ctrl_Opcode_Fade_CH_lvl_min                       = 0xd1,
     E_Ctrl_Opcode_Inc_level                             = 0xd0,
     E_Ctrl_Opcode_Dec_level                             = 0xcf,
     E_Ctrl_Opcode_Fade_area                             = 0xce,
@@ -164,12 +167,41 @@ typedef enum SETTING_OPCODE
     E_Opcode_Set_Physical_Channel_Level      = 0xb7,
     E_Opcode_DM320_dali_cmd                  = 0x6f
 }SETTING_OPCODE_ENUM;
+
+typedef enum DIM_DIR
+{
+    E_DIM_DOWN  = 0,
+    E_DIM_UP    = 1,
+}DIM_DIR_ENUM;
 /*----------------------------------------------*
  * macros                                       *
  *----------------------------------------------*/
 #define LDS_COMMAND_MAX_LEN 8
 #define MAX_CHANNEL_NUM     12
 #define DEVICE_CODE         0x94
+
+#define DIM_LEVEL_MAX       0xFE
+#define DIM_LEVEL_MIN       0x00
+
+#define ADDRESS_SWITCH          0x07
+#define ADDRESS_DUPLICATE       0x09
+#define ADDRESS_START_DELAY     0x0b
+#define ADDRESS_START_PRESET    0x0C
+#define ADDRESS_AUX_PRESS       0x50
+#define ADDRESS_AUX_PRESS_PRESET    0x51
+#define ADDRESS_AUX_RELEASE         0x50
+#define ADDRESS_AUX_RELEASE_PRESET  0x51
+#define ADDRESS_AREA            0x60
+#define ADDRESS_AREA_ADDPEND    0x6C
+#define ADDRESS_LOGIC_CHANNEL   0x78
+#define ADDRESS_MAX_LEVEL       0x84
+#define ADDRESS_CURRENT_PRESET  0x90
+#define ADDRESS_ON_DELAY        0x9C
+#define ADDRESS_OFF_DELAY       0xA8
+#define ADDRESS_SWITCH_LEVEY    0xB4
+#define ADDRESS_AREA_LINK       0xC0
+#define ADDRESS_PRESET_START    0xF0
+
 /*----------------------------------------------*
  * routines' implementations                    *
  *----------------------------------------------*/

@@ -157,6 +157,8 @@ void rt_init_thread_entry(void* parameter)
         calibration_init();
     }
 #endif /* #ifdef RT_USING_RTGUI */
+    App_Rs485_CMD_Process();
+    APP_LDS_Device_Init();
 }
 
 int rt_application_init(void)
@@ -194,8 +196,8 @@ int rt_application_init(void)
         rt_thread_startup(init_thread);
     #if 1
     init_thread = rt_thread_create("test_key",
-                                   test_key_thread_entry, RT_NULL,
-                                   2048, 30, 5);
+                                   test_key_scan_thread_entry, RT_NULL,
+                                   512, 30, 5);
     if (init_thread != RT_NULL)
         rt_thread_startup(init_thread);
     #endif
@@ -203,13 +205,11 @@ int rt_application_init(void)
     #if 1
     init_thread = rt_thread_create("test_74hc595",
                                    test_74hc595_drv_thread_entry, RT_NULL,
-                                   2048, 31, 5);
+                                   512, 31, 5);
     if (init_thread != RT_NULL)
         rt_thread_startup(init_thread);    
     #endif
     
-    App_Rs485_CMD_Process();
-    App_LDS_Protocol_Register();
     return 0;
 }
 

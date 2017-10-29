@@ -23,7 +23,7 @@
 #include <board.h>
 #include <rtthread.h>
 #include <Rtdef.h>
-
+#include "delay.h"
 #ifdef RT_USING_PIN
 #include "gpio.h"
 #include <drivers/pin.h>
@@ -113,11 +113,11 @@ void drv_74hc595_shift(rt_uint8_t BitVal)
         {
             GPIO_ResetBits(DS_PORT, DS_PIN);
         }
-        delay(1);
+        delay_us(1);
         GPIO_SetBits(SH_CP_PORT, SH_CP_PIN);
-        delay(10);
+        delay_us(10);
         GPIO_ResetBits(SH_CP_PORT, SH_CP_PIN);
-        delay(10);
+        delay_us(10);
     }
 }
 
@@ -128,7 +128,7 @@ void Drv_74hc595_data_write(rt_uint32_t ulBitVal)
     GPIO_SetBits(OE1_port,OE1_pin);
     GPIO_SetBits(OE2_port,OE2_pin);
 
-    delay(20);
+    delay_us(20);
     
     GPIO_ResetBits(ST_CP_PORT, ST_CP_PIN);
     //delay(1);
@@ -136,16 +136,16 @@ void Drv_74hc595_data_write(rt_uint32_t ulBitVal)
     drv_74hc595_shift(val);
     #if 1
     GPIO_ResetBits(ST_CP_PORT, ST_CP_PIN);
-    delay(20);
+    delay_us(20);
     GPIO_SetBits(ST_CP_PORT, ST_CP_PIN);    
-    delay(20);
+    delay_us(20);
     #endif
 
     val = (rt_uint8_t)(ulBitVal >> 8);
     drv_74hc595_shift(val);    
     
     GPIO_SetBits(ST_CP_PORT, ST_CP_PIN);    
-    delay(20);
+    delay_us(20);
 
     GPIO_ResetBits(SH_CP_PORT, SH_CP_PIN);
     GPIO_ResetBits(ST_CP_PORT, ST_CP_PIN);

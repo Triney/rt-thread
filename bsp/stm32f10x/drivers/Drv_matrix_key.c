@@ -69,15 +69,6 @@
 /*----------------------------------------------*
  * routines' implementations                    *
  *----------------------------------------------*/
-static void delay(int cnt)
-{
-    volatile unsigned int dl;
-    while(cnt--)
-    {
-        for(dl=0; dl<500; dl++);
-    }
-}
-
 void drv_matrix_key_init(void)
 {
 //#ifdef RT_USING_PIN
