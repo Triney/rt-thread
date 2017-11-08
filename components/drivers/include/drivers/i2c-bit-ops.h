@@ -28,7 +28,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+    #include "rtdef.h"
+    
 struct rt_i2c_bit_ops
 {
     void *data;            /* private data for lowlevel routines */

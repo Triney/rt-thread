@@ -22,6 +22,7 @@
 #include "arch/sys_arch.h"
 #include "lwip/debug.h"
 #include "lwip/netif.h"
+#include "lwip/netifapi.h"
 #include "lwip/tcpip.h"
 #include "netif/ethernetif.h"
 #include "lwip/sio.h"
@@ -113,7 +114,7 @@ static void tcpip_init_done_callback(void *arg)
             netif_set_up(ethif->netif);
 #endif
 
-            if (!(ethif->flags & ETHIF_LINK_PHYUP))
+            if (ethif->flags & ETHIF_LINK_PHYUP)
             {
                 netif_set_link_up(ethif->netif);
             }
@@ -176,7 +177,7 @@ int lwip_system_init(void)
 
 	return 0;
 }
-//INIT_COMPONENT_EXPORT(lwip_system_init);
+INIT_COMPONENT_EXPORT(lwip_system_init);
 
 void sys_init(void)
 {
@@ -601,8 +602,7 @@ u32_t sys_now(void)
 }
 
 
-#if 0
-WEAK
+RT_WEAK
 void mem_init(void)
 {
 }
@@ -628,7 +628,6 @@ void  mem_free(void *mem)
 {
     rt_free(mem);
 }
-#endif
 
 #ifdef RT_LWIP_PPP
 u32_t sio_read(sio_fd_t fd, u8_t *buf, u32_t size)

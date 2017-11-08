@@ -180,7 +180,7 @@ static err_t eth_netif_device_init(struct netif *netif)
         netif_set_up(ethif->netif);
 #endif
 
-        if (!(ethif->flags & ETHIF_LINK_PHYUP))
+        if (ethif->flags & ETHIF_LINK_PHYUP)
         {
             /* set link_up for this netif */
             netif_set_link_up(ethif->netif);
@@ -451,7 +451,7 @@ int eth_system_device_init(void)
 
     return (int)result;
 }
-//INIT_DEVICE_EXPORT(eth_system_device_init);
+INIT_DEVICE_EXPORT(eth_system_device_init);
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
@@ -506,11 +506,11 @@ FINSH_FUNCTION_EXPORT(set_if, set network interface address);
 #include <lwip/dns.h>
 void set_dns(char* dns_server)
 {
-    ip_addr_t *addr;
+    ip_addr_t addr;
 
-    if ((dns_server != RT_NULL) && ipaddr_aton(dns_server, addr))
+    if ((dns_server != RT_NULL) && ipaddr_aton(dns_server, &addr))
     {
-        dns_setserver(0, addr);
+        dns_setserver(0, &addr);
     }
 }
 FINSH_FUNCTION_EXPORT(set_dns, set DNS server address);

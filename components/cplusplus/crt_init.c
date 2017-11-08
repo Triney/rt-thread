@@ -43,9 +43,12 @@ void _init()
 void _fini()
 {
 }
+
+RT_WEAK void *__dso_handle = 0;
+
 #endif
 
-WEAK
+RT_WEAK
 int cplusplus_system_init(void)
 {
 #if defined(__GNUC__) && !defined(__CC_ARM)
