@@ -60,7 +60,7 @@ extern "C"{
 #endif /* __cplusplus */
 
 extern void test_74hc595_drv_thread_entry(void *parameter);
-extern void test_key_scan_thread_entry(void* parameter);
+
 
 #ifdef __cplusplus
 #if __cplusplus

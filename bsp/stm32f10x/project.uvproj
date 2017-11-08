@@ -424,14 +424,14 @@
               <FilePath>applications\application.c</FilePath>
             </File>
             <File>
-              <FileName>startup.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>applications\startup.c</FilePath>
-            </File>
-            <File>
               <FileName>App_LDS_Protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>applications\App_LDS_Protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>startup.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>applications\startup.c</FilePath>
             </File>
             <File>
               <FileName>app_test_drv.c</FileName>
@@ -442,6 +442,11 @@
               <FileName>Service_rs485.c</FileName>
               <FileType>1</FileType>
               <FilePath>applications\Service_rs485.c</FilePath>
+            </File>
+            <File>
+              <FileName>service_key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\applications\service_key.c</FilePath>
             </File>
           </Files>
         </Group>

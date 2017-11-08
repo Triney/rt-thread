@@ -322,10 +322,12 @@ void Service_Rs485_Send_thread(void *parameter)
             ptr = rt_malloc(msg.data_size);
 
             //size = 
+            rt_exit_critical();
             rt_ringbuffer_get(msg.data_ptr, ptr, msg.data_size);
             GPIO_ResetBits(RS485_OE_GPIO, RS485_OE_PIN);
             rt_device_write(device, 0, ptr, msg.data_size);
             GPIO_SetBits(RS485_OE_GPIO, RS485_OE_PIN);
+            rt_exit_critical();
             rt_free(ptr);
             
         }
@@ -404,7 +406,7 @@ void App_Rs485_CMD_Process(void)
 
     rt_device_set_rx_indicate(rs485, serial_rx_ind);
 
-    rt_device_open(rs485, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX);
+    rt_device_open(rs485, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX );
 
     tid = rt_thread_create("rs485_rcv",
                            Service_Rs485_Rcv_thread, 

@@ -21,6 +21,7 @@
 #include <board.h>
 #include <rtthread.h>
 #include <rtdevice.h>
+#include <string.h>
 /*----------------------------------------------*
  * external variables                           *
  *----------------------------------------------*/
@@ -147,7 +148,7 @@ rt_uint8_t          g_device_box_num     = 0xFF;
  * routines' implementations                    *
  *----------------------------------------------*/
 
-static rt_uint32_t LDSCheckSum(rt_uint8_t *buffer,rt_uint32_t Num)
+rt_uint32_t LDSCheckSum(rt_uint8_t *buffer,rt_uint32_t Num)
 {
 	rt_uint8_t i,sum=0;
 	for(i=Num;i!=0;i--)
@@ -1236,15 +1237,81 @@ void App_LDS_Device_Channel_Property_Get(void)
 
 }
 
+void App_LDS_Send_Device_ID(rt_bool_t IsReboot)
+{
+    rt_uint8_t      buff[8];
+    msg_t           msg;
+    
+    buff[0] = 0xfa;
+    buff[1] = DEVICE_CODE;
+    buff[2] = g_device_setting_ref.Device_box_num;
+    buff[3] = 0xfe;
+    if (RT_TRUE == IsReboot)
+    {
+        buff[4] = 0x80;
+    }
+    else
+    {
+        buff[4] = 1;
+    }
+    buff[5] = 0;
+    buff[6] = 0;
+    buff[7] = (rt_uint8_t)LDSCheckSum(buff, 7);
+    
+    rt_ringbuffer_put(&send_buffer_rb,buff , 8);
+    msg.data_ptr = &send_buffer_rb;
+    msg.data_size = 8;
+    rt_mq_send(mq_rs485_snd, &msg, sizeof(msg_t));
+}
+
+void App_device_service_key(void *parameter)
+{    
+    App_LDS_Send_Device_ID(RT_FALSE);
+}
+
+void App_device_rst_snd(void *parameter)
+{
+    App_LDS_Send_Device_ID(RT_TRUE);    
+}
+
+void App_Service_setting(void *parameter)
+{
+    rt_kprintf("setting mode \n");
+}    
+
+void App_Service_Reboot(void *parameter)
+{    
+    rt_kprintf("rebooting \n");
+}
+
+void App_CHxKey_Toggle_Output(void *parameter)
+{    
+    channelDataType *ptr;
+    if ( RT_NULL == parameter )
+    {
+        return;
+    }
+    ptr = (channelDataType *)parameter;
+
+    if( ptr->TargetLevel >= ptr->SwitchLevel)
+    {
+        LDSSetChannelTargetLevel(ptr->action, 0, 1);
+    }
+    else
+    {
+        LDSSetChannelTargetLevel(ptr->action, 0xff, 1);
+    }
+
+}
 void APP_LDS_Device_Init(void)
 {    
+    rt_timer_t  timer;
 
     eep_device = rt_device_find("EEP");
 
     if ( RT_NULL == eep_device ) 
     {
         return;
-        rt_kprint("can't find EEPROM");
     }
 
     rt_device_open(eep_device,0);
@@ -1254,5 +1321,24 @@ void APP_LDS_Device_Init(void)
     App_LDS_Device_Channel_Property_Get();
     
     App_LDS_Protocol_Register();
+
+    timer = rt_timer_create("dev_id_snd", 
+                            App_device_rst_snd, 
+                            RT_NULL, 
+                            RT_TICK_PER_SECOND, 
+                            RT_TIMER_FLAG_ONE_SHOT|RT_TIMER_FLAG_SOFT_TIMER);
+    rt_timer_start(timer);
+
+    service_key_fucntion_register(SERVICE_KEY, E_KEY_RELEASE, App_device_service_key,RT_NULL);
+    service_key_fucntion_register(SERVICE_KEY, E_KEY_LONG_PRESS, App_Service_Reboot,RT_NULL);
+    service_key_fucntion_register((SERVICE_KEY | CH1_KEY), E_KEY_PRESS, App_Service_setting,RT_NULL);
+    service_key_fucntion_register(CH1_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[0]);
+    service_key_fucntion_register(CH2_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[1]);
+    service_key_fucntion_register(CH3_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[2]);
+    service_key_fucntion_register(CH4_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[3]);
+    service_key_fucntion_register(CH5_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[4]);
+    service_key_fucntion_register(CH6_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[5]);
+    service_key_fucntion_register(CH7_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[6]);
+    service_key_fucntion_register(CH8_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[7]);
 }
 

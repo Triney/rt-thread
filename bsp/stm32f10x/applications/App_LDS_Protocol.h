@@ -20,6 +20,7 @@
 #define __APP_LDS_PROTOCOL_H__
 
 #include "Service_rs485.h"
+#include "Service_key.h"
 #include "App_test_drv.h"
 /*----------------------------------------------*
  * external variables                           *
