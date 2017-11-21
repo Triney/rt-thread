@@ -438,6 +438,8 @@ static rt_size_t App_LDSCmd_Ctrl_Preset(void *parameter,rt_uint8_t *ack_buffer)
             continue;
         }
 
+        g_device_channel[i].PrePreset = rcv_cmd->dim_param.bank;
+
         Preset_Target_Level[i] = ~Preset_Target_Level[i];
 
         if ( 0xFF ==Preset_Target_Level[i] )
@@ -802,6 +804,88 @@ rt_size_t App_LDS_CMD_Ctrl_Fade_CH_To_Level_1min(st_cmd_field *parameter,rt_uint
     return 0;
 }
 
+rt_size_t App_LDS_CMD_Ctrl_Request_CH_Lvl(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{
+    rt_uint8_t      i;
+    rt_uint8_t     *ptr = (rt_uint8_t * )parameter;
+    st_cmd_field   *rcv_cmd = (st_cmd_field *)parameter; 
+
+    for ( i = 0 ; i < MAX_CHANNEL_NUM; i++ )
+    {       
+        if (RT_TRUE != IsChannelAreaAccept(i, rcv_cmd->area))
+        {
+            continue;
+        }    
+
+        if(RT_TRUE != IsChannelAppendAreaAccpet(i, rcv_cmd->append_area))
+        {
+            continue;
+        }
+
+        if ( rcv_cmd->param[1] == g_device_channel[i].LogicChannel
+            ||(0xFF == rcv_cmd->param[1]))
+        {
+            if ( g_device_channel[i].flag_bit.is_repeat == 0)
+            {
+                
+                ack_buffer[0] = ptr[0];
+                ack_buffer[1] = ptr[1];
+                ack_buffer[2] = ptr[2];
+                ack_buffer[3] = E_Ctrl_Opcode_Reply_with_channel_levle;
+                if (RT_TRUE == g_device_channel[i].flag_bit.is_dimming)
+                {
+                    ack_buffer[4] = (rt_tick_get() - g_device_channel[i].StartTime)\
+                        *(g_device_channel[i].TargetLevel - g_device_channel[i].OringalLevel)/g_device_channel[i].TotalTime;
+                }
+                else
+                {
+                    ack_buffer[4] = g_device_channel[i].TargetLevel;
+                }
+                ack_buffer[4] = ~ack_buffer[4];// see protocol
+                ack_buffer[5] = g_device_channel[i].LogicChannel;
+                ack_buffer[6] = ~g_device_channel[i].TargetLevel;
+
+                return 7;
+            }
+        }
+    }    
+    return 0;    
+}
+rt_size_t App_LDS_CMD_Ctrl_Request_Area_Preset(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{
+    rt_uint8_t      i;
+    rt_uint8_t     *ptr = (rt_uint8_t * )parameter;
+    st_cmd_field   *rcv_cmd = (st_cmd_field *)parameter; 
+
+    for ( i = 0 ; i < MAX_CHANNEL_NUM; i++ )
+    {       
+        if (RT_TRUE != IsChannelAreaAccept(i, rcv_cmd->area))
+        {
+            continue;
+        }    
+
+        if(RT_TRUE != IsChannelAppendAreaAccpet(i, rcv_cmd->append_area))
+        {
+            continue;
+        }
+
+        if ( (0 == g_device_channel[i].LogicChannel)
+            &&(RT_FALSE == g_device_channel[i].flag_bit.is_repeat))
+        {               
+            ack_buffer[0] = ptr[0];
+            ack_buffer[1] = ptr[1];
+            ack_buffer[2] = ptr[2];
+            ack_buffer[3] = E_Ctrl_Opcode_Reply_current_preset;
+            ack_buffer[4] = 0;
+            ack_buffer[5] = g_device_channel[i].PrePreset;
+            ack_buffer[6] = 0;
+
+            return 7;           
+        }
+    }    
+    return 0;   
+
+}
 const CTRL_PROCESS_HANDLER_STRU ctrl_handler_array[]=
 {    
     {E_Ctrl_Opcode_Preset               ,App_LDSCmd_Ctrl_Preset},
@@ -813,6 +897,9 @@ const CTRL_PROCESS_HANDLER_STRU ctrl_handler_array[]=
     {E_Ctrl_Opcode_Fade_CH_lvl_min      ,App_LDS_CMD_Ctrl_Fade_CH_To_Level_1min},    
     {E_Ctrl_Opcode_Inc_level            ,App_LDS_CMD_Ctrl_Increa_CH_Level},
     {E_Ctrl_Opcode_Dec_level            ,App_LDS_CMD_Ctrl_Decrea_CH_Level},    
+    {E_Ctrl_Opcode_Request_channel_level,App_LDS_CMD_Ctrl_Request_CH_Lvl},        
+    {E_Ctrl_Opcode_Request_current_preset ,App_LDS_CMD_Ctrl_Request_Area_Preset},        
+
 };
 rt_size_t   ctrl_hanler_cnt = sizeof(ctrl_handler_array)/sizeof(SETTING_PROCESS_HANDLER_STRU);
 rt_size_t App_LDS_Ctrl_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
