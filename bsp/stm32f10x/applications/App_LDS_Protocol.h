@@ -216,7 +216,7 @@ extern "C"{
 
 extern void App_LDS_Protocol_Register(void);
 
-
+void APP_LDS_Device_Init(void);
 #ifdef __cplusplus
 #if __cplusplus
 }

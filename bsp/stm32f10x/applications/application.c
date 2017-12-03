@@ -170,7 +170,19 @@ void rt_init_thread_entry(void* parameter)
     service_key_start();
 
     App_Rs485_CMD_Process();
-    APP_LDS_Device_Init();
+    
+    {
+        rt_timer_t app_delay_start;
+
+        app_delay_start = rt_timer_create("app_start", 
+                        APP_LDS_Device_Init, 0, 
+                        RT_TICK_PER_SECOND / 2,
+                        RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
+        if ( RT_NULL != app_delay_start )
+        {
+            rt_timer_start(app_delay_start);
+        }
+    }
 }
 
 int rt_application_init(void)

@@ -46,6 +46,12 @@
 //#define USING_BXCAN1
 #define USING_SPI1
 
+#define DEBUG
+#ifdef DEBUG
+#define trace   rt_kprintf
+#else
+#define trace(...)
+#endif
 void rt_hw_board_init(void);
 
 #endif /* __BOARD_H__ */

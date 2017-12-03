@@ -231,11 +231,15 @@ void Service_Rs485_Rcv_thread(void *parameter)
 
     rt_size_t       size;
     rt_device_t     device;
-
+    
+    trace("%ds %dms thread rs485 rcv start \n",rt_tick_get()/200,
+                            (rt_tick_get()%200)*5);  
+    
     device = rt_device_find("uart2");
     
     while ( 1 )
     {
+    
         if ( RT_EOK != rt_sem_take(sem_rs_485_rcv, RT_WAITING_FOREVER))
         {
             continue;
@@ -308,7 +312,10 @@ void Service_Rs485_Send_thread(void *parameter)
     rt_device_t     device;
 
     msg_t           msg;
-
+    
+    trace("%ds %dms thread rs485 send start \n",rt_tick_get()/200,
+                            (rt_tick_get()%200)*5);  
+    
     device = rt_device_find("uart2");  
 
     while(1)
@@ -406,7 +413,7 @@ void App_Rs485_CMD_Process(void)
 
     rt_device_set_rx_indicate(rs485, serial_rx_ind);
 
-    rt_device_open(rs485, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX );
+    rt_device_open(rs485, RT_DEVICE_OFLAG_RDWR | RT_DEVICE_FLAG_INT_RX | RT_DEVICE_FLAG_INT_TX );
 
     tid = rt_thread_create("rs485_rcv",
                            Service_Rs485_Rcv_thread, 

@@ -1394,6 +1394,9 @@ void APP_LDS_Device_Init(void)
 {    
     rt_timer_t  timer;
 
+    trace("%ds %dms app lds protocol start \n",rt_tick_get()/200,
+                            (rt_tick_get()%200)*5);  
+
     eep_device = rt_device_find("EEP");
 
     if ( RT_NULL == eep_device ) 
@@ -1409,12 +1412,7 @@ void APP_LDS_Device_Init(void)
     
     App_LDS_Protocol_Register();
 
-    timer = rt_timer_create("dev_id_snd", 
-                            App_device_rst_snd, 
-                            RT_NULL, 
-                            RT_TICK_PER_SECOND, 
-                            RT_TIMER_FLAG_ONE_SHOT|RT_TIMER_FLAG_SOFT_TIMER);
-    rt_timer_start(timer);
+    App_LDS_Send_Device_ID(RT_TRUE); 
 
     service_key_fucntion_register(SERVICE_KEY, E_KEY_RELEASE, App_device_service_key,RT_NULL);
     service_key_fucntion_register(SERVICE_KEY, E_KEY_LONG_PRESS, App_Service_Reboot,RT_NULL);

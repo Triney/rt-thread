@@ -118,9 +118,12 @@ void service_key_scan_thread_entry(void* parameter)
     rt_uint32_t     long_press_time;
 
     rt_uint32_t     last_comb_key = 0;
-    
+
+    trace("%ds %dms thread key scan start \n",rt_tick_get()/200,
+                            (rt_tick_get()%200)*5);    
     while(1)
     {
+    
         ret = DrvScanRow(2);
         ret <<= 3;
         ret |= DrvScanRow(1);
@@ -217,31 +220,43 @@ void service_key_process(void *parameter)
 {
     rt_uint32_t     recved;
 
+    trace("%ds %dms thread key process start \n",rt_tick_get()/200,
+                            (rt_tick_get()%200)*5);
+
     while(1)
     {
+    
         if (RT_EOK == rt_event_recv(evtKeyPress, 0x1ff, 
-                                    RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 1, &recved))
+                                    RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 
+                                    1,
+                                    &recved))
         {
             service_key_evt_func_execute(&g_key_press_evt_func_head_node,
                                           recved);
         }
 
         if ( RT_EOK == rt_event_recv(evtKeyRelease, 0x1ff, 
-                                    RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 1, &recved ))
+                                    RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 
+                                    1,
+                                    &recved ))
         {
             service_key_evt_func_execute(&g_key_release_evt_func_head_node,
                                           recved);
         }
 
         if ( RT_EOK == rt_event_recv(evtKeyLongPress, 0x1ff, 
-                                    RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 1, &recved ))
+                                    RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 
+                                    1, 
+                                    &recved ))
         {
             service_key_evt_func_execute(&g_key_long_press_evt_func_head_node,
                                           recved);
         }
         
         if ( RT_EOK == rt_event_recv(evtKeyLongPressRelease, 0x1ff, 
-                                    RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 1, &recved ))
+                                    RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 
+                                    1,
+                                    &recved ))
         {
             service_key_evt_func_execute(&g_key_long_press_release_evt_func_head_node,
                                           recved);
