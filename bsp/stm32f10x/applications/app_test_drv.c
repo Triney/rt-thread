@@ -74,7 +74,7 @@ void test_74hc595_drv_thread_entry(void *parameter)
     msg_t           msg;
     extern rt_mq_t     mq_rs485_snd;
 
-    trace("%d.%ds thread 595 output start \n",rt_tick_get()/200,
+    trace("%ds %dms thread 595 output start \n",rt_tick_get()/200,
                             (rt_tick_get()%200)*5);  
     
     Drv_74hc595_hw_init(); 
@@ -84,7 +84,7 @@ void test_74hc595_drv_thread_entry(void *parameter)
     
     while(1)
     {
-        trace("%d.%dms excute thread 74hc595 \n",rt_tick_get()/200,
+        trace("%ds %dms excute thread 74hc595 \n",rt_tick_get()/200,
                                     (rt_tick_get()%200)*5);
         result = rt_mb_recv(mb_relay_acton, &ret, RT_WAITING_FOREVER);
 
@@ -114,7 +114,7 @@ void test_74hc595_drv_thread_entry(void *parameter)
                 relay_val = ~relay_val;
             
                 Drv_74hc595_data_write(relay_val);                  
-                trace("%d.%dms receive mb : channel %d : %d \n",rt_tick_get()/200,
+                trace("%ds %dms receive mb : channel %d : %d \n",rt_tick_get()/200,
                                             (rt_tick_get()%200)*5,channel,action);
             }
 

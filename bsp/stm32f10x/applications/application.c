@@ -46,6 +46,7 @@
 #include "app_test_drv.h"
 #include "App_LDS_Protocol.h"
 #include "fm24clxx.h"
+#include "service_storage.h"
 
 
 ALIGN(RT_ALIGN_SIZE)
@@ -168,6 +169,7 @@ void rt_init_thread_entry(void* parameter)
         rt_thread_startup(init_thread);    
     #endif
     service_key_start();
+    service_storage_io_init();
 
     App_Rs485_CMD_Process();
     

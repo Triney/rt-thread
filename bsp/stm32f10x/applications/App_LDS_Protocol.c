@@ -22,6 +22,8 @@
 #include <rtthread.h>
 #include <rtdevice.h>
 #include <string.h>
+
+#include "service_storage.h"
 /*----------------------------------------------*
  * external variables                           *
  *----------------------------------------------*/
@@ -136,6 +138,8 @@ DEVICE_SETTING_FLAG_STRU                device_settiong_option;
 
 rt_device_t         eep_device;
 rt_uint8_t          g_device_box_num     = 0xFF;
+
+rt_uint8_t          tmp[8];
 /*----------------------------------------------*
  * constants                                    *
  *----------------------------------------------*/
@@ -424,7 +428,7 @@ static rt_size_t App_LDSCmd_Ctrl_Preset(void *parameter,rt_uint8_t *ack_buffer)
     PresetAddress = ADDRESS_PRESET_START + 
                     (g_device_setting_ref.PresetOffset + rcv_cmd->dim_param.bank)*12;
 
-    rt_device_read(eep_device,PresetAddress,Preset_Target_Level,12);
+    service_ee_read_req(PresetAddress, Preset_Target_Level, 12);
     
     for ( i = 0 ; i < MAX_CHANNEL_NUM; i++ )
     {       
@@ -945,19 +949,17 @@ rt_size_t App_LDS_CMD_ReadEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
 { 
     rt_uint32_t     address;
     rt_size_t       ret;
+
     if ( RT_TRUE == SetDeviceSelect(parameter))
     {
         address  = (rt_uint32_t)parameter->param[0];
         address  = address<<8;
         address |= (rt_uint32_t)parameter->param[1];
 
-        if ( RT_EOK == rt_device_open(eep_device, 0))
+        if ( RT_EOK == service_ee_read_req(address, tmp, 1))
         {   
-            extern rt_uint8_t  tmp_data[4096];
-            rt_device_read(eep_device, address, tmp_data, 1);
-            rt_device_close(eep_device);
             memcpy(ack_buffer,parameter,6);
-            memcpy(ack_buffer+6 ,tmp_data,1);
+            memcpy(ack_buffer+6 ,tmp,1);
             ack_buffer[3] = E_Opcode_Echo_EEPROM;
 
             ret = 7;
@@ -985,16 +987,11 @@ rt_size_t App_LDS_CMD_WriteEE(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
         address  = address<<8;
         address |= (rt_uint32_t)parameter->param[1];
         
-        if ( RT_EOK == rt_device_open(eep_device, 0))
-        {
-            extern rt_uint8_t  tmp_data[4096];
-            rt_device_write(eep_device, address, parameter->param + 2, 1);
-            rt_thread_delay(RT_TICK_PER_SECOND / 100);
-            
+        if ( RT_EOK == service_ee_write_req(address,  parameter->param + 2, 1))
+        {            
             memcpy(ack_buffer,parameter,6);
-            rt_device_read(eep_device, address, tmp_data, 1);
-            memcpy(ack_buffer+6 ,tmp_data,1);
-            rt_device_close(eep_device);
+            service_ee_read_req(address, tmp, 1);
+            memcpy(ack_buffer+6 ,tmp,1);
             ack_buffer[3] = E_Opcode_Echo_EEPROM;
             return 7;
         }
@@ -1036,7 +1033,6 @@ rt_size_t App_LDS_CMD_BlockReadEEAck(st_cmd_field *parameter,rt_uint8_t *ack_buf
     if ( RT_TRUE == IsDeviceSelect())
     {
         rt_uint16_t address;
-        extern rt_uint8_t  tmp_data[4096];
         
         if (RT_FALSE == IsDeviceEEBlockOptionEnable() )
         {
@@ -1049,13 +1045,10 @@ rt_size_t App_LDS_CMD_BlockReadEEAck(st_cmd_field *parameter,rt_uint8_t *ack_buf
 
         SetBlockRWAddress(address);
 
-        if ( RT_EOK == rt_device_open(eep_device, 0))
+        if ( RT_EOK == service_ee_read_req(address, tmp, 6))
         {
-           rt_device_read(eep_device, address, tmp_data, 6);
-           rt_device_close(eep_device);
-           
            ack_buffer[0] = 0xFC;
-           memcpy(ack_buffer + 1, tmp_data,6);
+           memcpy(ack_buffer + 1, tmp,6);
            return 7;            
         }       
         else
@@ -1132,10 +1125,8 @@ rt_size_t App_LDS_Setting_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buffer
 }
 rt_size_t App_LDS_BlockWrite_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
 {   
-    #define EE_PAGE_SIZE    16
     if ( RT_TRUE == IsDeviceSelect())
     {
-        rt_uint8_t  temp[8];
         rt_uint8_t *in;
 
         if (RT_FALSE == IsDeviceEEBlockOptionEnable())
@@ -1146,32 +1137,13 @@ rt_size_t App_LDS_BlockWrite_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buf
         {    
             rt_uint16_t     address;
             rt_uint16_t     i,j;
+            rt_base_t       level;
 
             in = (rt_uint8_t *)parameter;
-            memcpy(temp,in+1,6);
-
+            memcpy(tmp,in+1,6);
+       
             address = device_settiong_option.block_ee_address;
-                
-    		i = address%256;
-    		j = i-(i>>4)*16+5;
-    		if(j < 16)
-    		{
-    			rt_device_write(eep_device,address,temp,6);
-    		}
-    		else
-    		{
-    			i=j-15;
-    			j=6-i;
-    			rt_device_write(eep_device,address
-    								,temp
-    								,j);
-
-    			rt_thread_delay(RT_TICK_PER_SECOND / 100);
-
-    			rt_device_write(eep_device,address+j
-    								,temp+j
-    								,i);
-    		}
+            service_ee_write_req(address, tmp, 6);
                                         
             ack_buffer[0] = 0xFA;
             ack_buffer[1] = DEVICE_CODE;
@@ -1181,8 +1153,10 @@ rt_size_t App_LDS_BlockWrite_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buf
             ack_buffer[5] = (address )&0xFF;            
             ack_buffer[6] = 0;
 
+            level = rt_hw_interrupt_disable();
             address += 6;
             SetBlockRWAddress(address);
+            rt_hw_interrupt_enable(level);
             return 7;  
         }
     }
@@ -1239,7 +1213,7 @@ void App_LDS_Device_Channel_Property_Get(void)
     // read channel area info from ee
     {
         rt_uint8_t      area[MAX_CHANNEL_NUM];
-        rt_device_read(eep_device,ADDRESS_AREA,area,MAX_CHANNEL_NUM);
+        service_ee_read_req(ADDRESS_AREA, area, MAX_CHANNEL_NUM);
 
         for ( i = 0 ; i <MAX_CHANNEL_NUM; i++ )
         {
@@ -1266,8 +1240,7 @@ void App_LDS_Device_Channel_Property_Get(void)
     
     {
         rt_uint8_t      area_append[MAX_CHANNEL_NUM];
-        rt_device_read(eep_device,ADDRESS_AREA_ADDPEND,area_append,MAX_CHANNEL_NUM);
-
+        service_ee_read_req(ADDRESS_AREA_ADDPEND, area_append, MAX_CHANNEL_NUM);
         for ( i = 0 ; i <MAX_CHANNEL_NUM; i++ )
         {
             g_device_channel[i].AppendArea= area_append[i];
@@ -1276,8 +1249,8 @@ void App_LDS_Device_Channel_Property_Get(void)
     
     {
         rt_uint8_t      logic_channel[MAX_CHANNEL_NUM];
-        rt_device_read(eep_device,ADDRESS_LOGIC_CHANNEL,logic_channel,MAX_CHANNEL_NUM);
-
+        service_ee_read_req(ADDRESS_LOGIC_CHANNEL, logic_channel, MAX_CHANNEL_NUM);
+        
         for ( i = 0 ; i <MAX_CHANNEL_NUM; i++ )
         {
             g_device_channel[i].LogicChannel= logic_channel[i];
@@ -1286,8 +1259,8 @@ void App_LDS_Device_Channel_Property_Get(void)
 
     {
         rt_uint8_t      max_level[MAX_CHANNEL_NUM];
-        rt_device_read(eep_device,ADDRESS_MAX_LEVEL,max_level,MAX_CHANNEL_NUM);
-
+        service_ee_read_req(ADDRESS_MAX_LEVEL, max_level, MAX_CHANNEL_NUM);
+        
         for ( i = 0 ; i <MAX_CHANNEL_NUM; i++ )
         {
             g_device_channel[i].MaxLevel= max_level[i];
@@ -1295,7 +1268,7 @@ void App_LDS_Device_Channel_Property_Get(void)
     }      
     {
         rt_uint8_t      switch_level[MAX_CHANNEL_NUM];
-        rt_device_read(eep_device,ADDRESS_SWITCH_LEVEY,switch_level,MAX_CHANNEL_NUM);
+        service_ee_read_req(ADDRESS_SWITCH_LEVEY, switch_level, MAX_CHANNEL_NUM);
 
         for ( i = 0 ; i <MAX_CHANNEL_NUM; i++ )
         {
@@ -1305,7 +1278,7 @@ void App_LDS_Device_Channel_Property_Get(void)
     
     {
         rt_uint8_t      on_delay[MAX_CHANNEL_NUM];
-        rt_device_read(eep_device,ADDRESS_ON_DELAY,on_delay,MAX_CHANNEL_NUM);
+        service_ee_read_req(ADDRESS_ON_DELAY, on_delay, MAX_CHANNEL_NUM);
 
         for ( i = 0 ; i <MAX_CHANNEL_NUM; i++ )
         {
@@ -1314,7 +1287,7 @@ void App_LDS_Device_Channel_Property_Get(void)
     }
     {
         rt_uint8_t      off_delay[MAX_CHANNEL_NUM];
-        rt_device_read(eep_device,ADDRESS_OFF_DELAY,off_delay,MAX_CHANNEL_NUM);
+        service_ee_read_req(ADDRESS_OFF_DELAY, off_delay, MAX_CHANNEL_NUM);
 
         for ( i = 0 ; i <MAX_CHANNEL_NUM; i++ )
         {
@@ -1333,16 +1306,16 @@ void App_LDS_Send_Device_ID(rt_bool_t IsReboot)
     buff[1] = DEVICE_CODE;
     buff[2] = g_device_setting_ref.Device_box_num;
     buff[3] = 0xfe;
+    buff[4] = 1;
+    buff[5] = 0;
     if (RT_TRUE == IsReboot)
     {
-        buff[4] = 0x80;
+        buff[6] = 0x80;
     }
     else
     {
-        buff[4] = 1;
-    }
-    buff[5] = 0;
-    buff[6] = 0;
+        buff[6] = 0;
+    }    
     buff[7] = (rt_uint8_t)LDSCheckSum(buff, 7);
     
     rt_ringbuffer_put(&send_buffer_rb,buff , 8);
@@ -1392,11 +1365,9 @@ void App_CHxKey_Toggle_Output(void *parameter)
 }
 void APP_LDS_Device_Init(void)
 {    
-    rt_timer_t  timer;
-
     trace("%ds %dms app lds protocol start \n",rt_tick_get()/200,
                             (rt_tick_get()%200)*5);  
-
+    #if 0
     eep_device = rt_device_find("EEP");
 
     if ( RT_NULL == eep_device ) 
@@ -1407,7 +1378,10 @@ void APP_LDS_Device_Init(void)
     rt_device_open(eep_device,0);
     rt_device_read(eep_device,0,&g_device_setting_ref,7);
     rt_device_read(eep_device,12,&(g_device_setting_ref.StartDelay),1);
-
+    #else
+    service_ee_read_req(0,(rt_uint8_t *)&g_device_setting_ref,7);
+    service_ee_read_req(12,&(g_device_setting_ref.StartDelay),1);
+    #endif
     App_LDS_Device_Channel_Property_Get();
     
     App_LDS_Protocol_Register();
