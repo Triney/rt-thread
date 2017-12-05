@@ -115,7 +115,7 @@ void service_key_scan_thread_entry(void* parameter)
     rt_uint32_t     release = 0;
     rt_uint32_t     count = 0; 
 
-    rt_uint32_t     long_press_time;
+    rt_uint32_t     long_press_time = 0;
 
     rt_uint32_t     last_comb_key = 0;
 

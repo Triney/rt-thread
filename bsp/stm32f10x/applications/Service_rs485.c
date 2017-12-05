@@ -325,10 +325,8 @@ void Service_Rs485_Send_thread(void *parameter)
             rt_uint8_t  *ptr;
             //rt_size_t   size;
             
-
             ptr = rt_malloc(msg.data_size);
 
-            //size = 
             rt_exit_critical();
             rt_ringbuffer_get(msg.data_ptr, ptr, msg.data_size);
             GPIO_ResetBits(RS485_OE_GPIO, RS485_OE_PIN);
