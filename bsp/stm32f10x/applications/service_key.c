@@ -42,6 +42,7 @@
 /*----------------------------------------------*
  * internal routine prototypes                  *
  *----------------------------------------------*/
+#ifdef KEY_USE_EVT 
 rt_event_t          evtKeyPress;
 rt_event_t          evtKeyRelease;
 rt_event_t          evtKeyLongPress;
@@ -51,6 +52,10 @@ rt_list_t           g_key_press_evt_func_head_node;
 rt_list_t           g_key_release_evt_func_head_node;
 rt_list_t           g_key_long_press_evt_func_head_node;
 rt_list_t           g_key_long_press_release_evt_func_head_node;
+#else
+rt_mq_t             mq_key_action;
+rt_list_t           g_key_func_head_list[E_KEY_ACT_MAX];
+#endif
 /*----------------------------------------------*
  * project-wide global variables                *
  *----------------------------------------------*/
@@ -89,9 +94,11 @@ static rt_bool_t service_key_combination_find(rt_uint32_t event)
     {
         return RT_FALSE;
     }
-
+    #ifdef KEY_USE_EVT
     evt_head_node = &g_key_press_evt_func_head_node;
-
+    #else
+    evt_head_node = &g_key_func_head_list[E_KEY_PRESS];
+    #endif
     for ( key_evt_node = evt_head_node->next; 
           key_evt_node != evt_head_node; 
           key_evt_node = key_evt_node->next)
@@ -118,6 +125,8 @@ void service_key_scan_thread_entry(void* parameter)
     rt_uint32_t     long_press_time = 0;
 
     rt_uint32_t     last_comb_key = 0;
+    
+    KEY_ACTION_EVT_STRU     key_action;
 
     trace("%ds %dms thread key scan start \n",rt_tick_get()/200,
                             (rt_tick_get()%200)*5);    
@@ -148,7 +157,15 @@ void service_key_scan_thread_entry(void* parameter)
 
         if (0 != press)
         {
+            #ifdef KEY_USE_EVT
             rt_event_send(evtKeyPress, press);
+            #else
+            key_action.key_msg_type = E_KEY_PRESS;
+            key_action.key_value    = press;
+
+            rt_mq_send(mq_key_action, &key_action, sizeof(KEY_ACTION_EVT_STRU));
+            
+            #endif
         }
         
         if (0 != release)
@@ -159,11 +176,27 @@ void service_key_scan_thread_entry(void* parameter)
                 {
                     if ( long_press_time >=20 )
                     {
+                        #ifdef KEY_USE_EVT
                         rt_event_send(evtKeyLongPressRelease, release);
+                        #else
+                        key_action.key_msg_type = E_KEY_LONG_PRESS_RELEAE;
+                        key_action.key_value    = release;
+
+                        rt_mq_send(mq_key_action, &key_action, sizeof(KEY_ACTION_EVT_STRU));
+                        
+                        #endif
                     }
                     else
                     {
+                        #if KEY_USE_EVT
                         rt_event_send(evtKeyRelease, release);
+                        #else
+                        key_action.key_msg_type = E_KEY_RELEASE;
+                        key_action.key_value    = release;
+
+                        rt_mq_send(mq_key_action, &key_action, sizeof(KEY_ACTION_EVT_STRU));
+                        
+                        #endif
                     }
                     long_press_time = 0;                    
                 }
@@ -175,7 +208,14 @@ void service_key_scan_thread_entry(void* parameter)
             }
             else if(RT_TRUE== service_key_combination_find(release | count))
             {
+                #if KEY_USE_EVT
                 rt_event_send(evtKeyRelease, (release | count));
+                #else
+                key_action.key_msg_type = E_KEY_RELEASE;
+                key_action.key_value    = (release | count);
+
+                rt_mq_send(mq_key_action, &key_action, sizeof(KEY_ACTION_EVT_STRU));                
+                #endif                
                 last_comb_key = count;
             }
         }
@@ -193,7 +233,14 @@ void service_key_scan_thread_entry(void* parameter)
                 }
                 else if (long_press_time == (KEY_SCAN_TICK_PER_SECOND * 2))
                 {
+                    #ifdef KEY_USE_EVT
                     rt_event_send( evtKeyLongPress, count);
+                    #else
+                    key_action.key_msg_type = E_KEY_LONG_PRESS;
+                    key_action.key_value    = count;
+
+                    rt_mq_send(mq_key_action, &key_action, sizeof(KEY_ACTION_EVT_STRU));                
+                    #endif                        
                     long_press_time ++;
                 }
             }
@@ -203,7 +250,14 @@ void service_key_scan_thread_entry(void* parameter)
                 {
                     if (0 == last_comb_key )
                     {
+                        #ifdef KEY_USE_EVT
                         rt_event_send( evtKeyPress, count);
+                        #else
+                        key_action.key_msg_type = E_KEY_PRESS;
+                        key_action.key_value    = count;
+
+                        rt_mq_send(mq_key_action, &key_action, sizeof(KEY_ACTION_EVT_STRU));                
+                        #endif                               
                         last_comb_key = count;
                     }
                     
@@ -218,14 +272,17 @@ void service_key_scan_thread_entry(void* parameter)
 
 void service_key_process(void *parameter)
 {
-    rt_uint32_t     recved;
-
+    #ifdef KEY_USE_EVT
+    rt_uint32_t                 recved;
+    #else
+    KEY_ACTION_EVT_STRU         recved;
+    #endif
     trace("%ds %dms thread key process start \n",rt_tick_get()/200,
                             (rt_tick_get()%200)*5);
 
     while(1)
     {
-    
+        #ifdef KEY_USE_EVT
         if (RT_EOK == rt_event_recv(evtKeyPress, 0x1ff, 
                                     RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 
                                     1,
@@ -261,6 +318,21 @@ void service_key_process(void *parameter)
             service_key_evt_func_execute(&g_key_long_press_release_evt_func_head_node,
                                           recved);
         }        
+        #else
+
+        if ( RT_EOK == rt_mq_recv(mq_key_action, 
+                        &recved, 
+                        sizeof(KEY_ACTION_EVT_STRU), 
+                        RT_WAITING_FOREVER))
+        {
+            if ( recved.key_msg_type <  E_KEY_ACT_MAX)
+            {
+                service_key_evt_func_execute(&g_key_func_head_list[recved.key_msg_type],
+                                            recved.key_value);
+            }
+        }
+        
+        #endif
     }    
 }
 
@@ -282,6 +354,8 @@ void service_key_fucntion_register(rt_uint32_t          event,
     ptr->pFunc = p_key_func;
     ptr->parameter = parameter;
 
+    #ifdef KEY_USE_EVT
+    
     if ( E_KEY_PRESS == key_evt_type )
     {
         evt_head_node = &g_key_press_evt_func_head_node;
@@ -302,7 +376,16 @@ void service_key_fucntion_register(rt_uint32_t          event,
     {
         return;
     }
+    #else
 
+    if ( key_evt_type >= E_KEY_ACT_MAX )
+    {
+        return;
+    }
+
+    evt_head_node = &g_key_func_head_list[key_evt_type];
+    
+    #endif
     if (RT_TRUE == rt_list_isempty(evt_head_node))
     {
         rt_list_insert_after(evt_head_node, &(ptr->node));
@@ -347,6 +430,7 @@ void service_key_function_unregister(rt_uint32_t          event,
         if ( cur_searching_node->event == event)
         {
             rt_list_remove(&(cur_searching_node->node));
+            rt_free(cur_searching_node);
             break;
         }
     }    
@@ -382,6 +466,8 @@ void service_key_start(void)
     
     drv_matrix_key_init();
 
+    #ifdef KEY_USE_EVT
+    
     rt_list_init(&g_key_press_evt_func_head_node);
     rt_list_init(&g_key_release_evt_func_head_node);
     rt_list_init(&g_key_long_press_evt_func_head_node);
@@ -391,7 +477,16 @@ void service_key_start(void)
     evtKeyRelease = rt_event_create("key_Release",RT_IPC_FLAG_FIFO);
     evtKeyLongPress = rt_event_create("key_LPress",RT_IPC_FLAG_FIFO);
     evtKeyLongPressRelease = rt_event_create("key_LRelease",RT_IPC_FLAG_FIFO);
+    #else
     
+    rt_list_init(&g_key_func_head_list[E_KEY_PRESS]);
+    rt_list_init(&g_key_func_head_list[E_KEY_RELEASE]);
+    rt_list_init(&g_key_func_head_list[E_KEY_LONG_PRESS]);
+    rt_list_init(&g_key_func_head_list[E_KEY_LONG_PRESS_RELEAE]);
+    
+    mq_key_action = rt_mq_create("key_action", 
+                                sizeof(KEY_ACTION_EVT_STRU), 5, RT_IPC_FLAG_FIFO);
+    #endif
     #if 1
     init_thread = rt_thread_create("scan_key",
                                    service_key_scan_thread_entry, RT_NULL,

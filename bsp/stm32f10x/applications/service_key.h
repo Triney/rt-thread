@@ -31,6 +31,15 @@
  *----------------------------------------------*/
 typedef void (*pKeyFunction)(void *parameter);
 
+typedef enum KEY_ACTION_TYPE
+{
+    E_KEY_PRESS     = 0,
+    E_KEY_RELEASE   ,
+    E_KEY_LONG_PRESS,
+    E_KEY_LONG_PRESS_RELEAE,
+    E_KEY_ACT_MAX,
+}KEY_ACTION_TYPE_ENUM;
+
 typedef struct KEY_EVENT_FUNCTION
 {
     rt_list_t               node;
@@ -38,6 +47,12 @@ typedef struct KEY_EVENT_FUNCTION
     pKeyFunction            pFunc;
     void                   *parameter;
 }KEY_EVENT_FUNCTION_STRU;
+
+typedef struct KEY_ACTION_EVT
+{
+    KEY_ACTION_TYPE_ENUM    key_msg_type;
+    rt_uint32_t             key_value;
+}KEY_ACTION_EVT_STRU;
 /*----------------------------------------------*
  * project-wide global variables                *
  *----------------------------------------------*/
@@ -49,14 +64,7 @@ typedef struct KEY_EVENT_FUNCTION
 /*----------------------------------------------*
  * constants                                    *
  *----------------------------------------------*/
-typedef enum KEY_ACTION_TYPE
-{
-    E_KEY_PRESS     = 0,
-    E_KEY_RELEASE   ,
-    E_KEY_LONG_PRESS,
-    E_KEY_LONG_PRESS_RELEAE,
-    E_KEY_ACT_MAX,
-}KEY_ACTION_TYPE_ENUM;
+
 
 typedef enum SM_KEY
 {
@@ -72,6 +80,7 @@ typedef enum SM_KEY
 /*----------------------------------------------*
  * macros                                       *
  *----------------------------------------------*/
+//#define KEY_USE_EVT 
 #define KEY_NUMBERS     16
 
 #define KEY_SCAN_TICK_PER_SECOND        20
