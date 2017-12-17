@@ -44,7 +44,8 @@ typedef struct Flag
     rt_uint8_t  is_repeat:1;
 }bf_ChannelFlag;
  
-
+static rt_timer_t   lds_address_flash_timer;
+static rt_timer_t   lds_net_set_timeout_timer;
  
 typedef struct channelDataType_tag
 {
@@ -1297,6 +1298,7 @@ void App_LDS_Device_Channel_Property_Get(void)
 
 }
 
+
 void App_LDS_Send_Device_ID(rt_bool_t IsReboot)
 {
     rt_uint8_t      buff[8];
@@ -1334,14 +1336,12 @@ void App_device_rst_snd(void *parameter)
     App_LDS_Send_Device_ID(RT_TRUE);    
 }
 
-void App_Service_setting(void *parameter)
-{
-    rt_kprintf("setting mode \n");
-}    
+
 
 void App_Service_Reboot(void *parameter)
 {    
-    rt_kprintf("rebooting \n");
+    trace("rebooting \n");
+    NVIC_SystemReset();
 }
 
 void App_CHxKey_Toggle_Output(void *parameter)
@@ -1361,8 +1361,53 @@ void App_CHxKey_Toggle_Output(void *parameter)
     {
         LDSSetChannelTargetLevel(ptr->action, 0xff, 1);
     }
+}
+
+
+void App_LDS_Key_Normal_func_register(void)
+{
+    service_key_fucntion_register(SERVICE_KEY, E_KEY_RELEASE, App_device_service_key,RT_NULL);
+    service_key_fucntion_register(SERVICE_KEY, E_KEY_LONG_PRESS, App_Service_Reboot,RT_NULL);
+    service_key_fucntion_register((SERVICE_KEY | CH1_KEY), E_KEY_PRESS, App_Service_setting,RT_NULL);
+    service_key_fucntion_register(CH1_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[0]);
+    service_key_fucntion_register(CH2_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[1]);
+    service_key_fucntion_register(CH3_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[2]);
+    service_key_fucntion_register(CH4_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[3]);
+    service_key_fucntion_register(CH5_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[4]);
+    service_key_fucntion_register(CH6_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[5]);
+    service_key_fucntion_register(CH7_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[6]);
+    service_key_fucntion_register(CH8_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[7]);
 
 }
+void App_LDS_Key_Setting_func_register(void)
+{    
+    service_key_function_unregister(SERVICE_KEY, E_KEY_RELEASE);
+    service_key_function_unregister(CH1_KEY, E_KEY_RELEASE);
+    service_key_function_unregister(CH2_KEY, E_KEY_RELEASE);
+    service_key_function_unregister(CH3_KEY, E_KEY_RELEASE);
+    service_key_function_unregister(CH4_KEY, E_KEY_RELEASE);
+    service_key_function_unregister(CH5_KEY, E_KEY_RELEASE);
+    service_key_function_unregister(CH6_KEY, E_KEY_RELEASE);
+    service_key_function_unregister(CH7_KEY, E_KEY_RELEASE);
+    service_key_function_unregister(CH8_KEY, E_KEY_RELEASE);
+}
+
+void App_Service_setting(void *parameter)
+{
+    static rt_bool_t is_devocie_setting_mode = RT_FALSE;
+    if ( RT_FALSE == is_devocie_setting_mode)
+    {
+        is_devocie_setting_mode = RT_TRUE;
+        LDS_TRACE("enter setting mode \n");
+        App_LDS_Key_Setting_func_register();
+    }
+    else
+    {
+        is_devocie_setting_mode = RT_FALSE;
+        LDS_TRACE("exit setting mode \n");
+        App_LDS_Key_Normal_func_register();
+    }
+}    
 void APP_LDS_Device_Init(void)
 {    
     trace("%ds %dms app lds protocol start \n",rt_tick_get()/200,
@@ -1387,17 +1432,7 @@ void APP_LDS_Device_Init(void)
     App_LDS_Protocol_Register();
 
     App_LDS_Send_Device_ID(RT_TRUE); 
+    App_LDS_Key_Normal_func_register();
 
-    service_key_fucntion_register(SERVICE_KEY, E_KEY_RELEASE, App_device_service_key,RT_NULL);
-    service_key_fucntion_register(SERVICE_KEY, E_KEY_LONG_PRESS, App_Service_Reboot,RT_NULL);
-    service_key_fucntion_register((SERVICE_KEY | CH1_KEY), E_KEY_PRESS, App_Service_setting,RT_NULL);
-    service_key_fucntion_register(CH1_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[0]);
-    service_key_fucntion_register(CH2_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[1]);
-    service_key_fucntion_register(CH3_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[2]);
-    service_key_fucntion_register(CH4_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[3]);
-    service_key_fucntion_register(CH5_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[4]);
-    service_key_fucntion_register(CH6_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[5]);
-    service_key_fucntion_register(CH7_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[6]);
-    service_key_fucntion_register(CH8_KEY, E_KEY_RELEASE, App_CHxKey_Toggle_Output,&g_device_channel[7]);
 }
 

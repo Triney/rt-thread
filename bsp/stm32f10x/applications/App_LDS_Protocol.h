@@ -203,6 +203,7 @@ typedef enum DIM_DIR
 #define ADDRESS_AREA_LINK       0xC0
 #define ADDRESS_PRESET_START    0xF0
 
+#define LDS_TRACE   trace
 /*----------------------------------------------*
  * routines' implementations                    *
  *----------------------------------------------*/
@@ -215,7 +216,7 @@ extern "C"{
 #endif /* __cplusplus */
 
 extern void App_LDS_Protocol_Register(void);
-
+void App_Service_setting(void *parameter);
 void APP_LDS_Device_Init(void);
 #ifdef __cplusplus
 #if __cplusplus

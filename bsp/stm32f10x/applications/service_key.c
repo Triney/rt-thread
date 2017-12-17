@@ -317,7 +317,14 @@ void service_key_function_unregister(rt_uint32_t          event,
     rt_list_t       *evt_head_node;
     rt_list_t                 *key_evt_node;
     KEY_EVENT_FUNCTION_STRU   *cur_searching_node;
+    
+    if ( key_evt_type >= E_KEY_ACT_MAX )
+    {
+        return;
+    }
 
+    evt_head_node = &g_key_func_head_list[key_evt_type];
+    
     for ( key_evt_node = evt_head_node->next; 
           key_evt_node != evt_head_node; 
           key_evt_node = key_evt_node->next)
