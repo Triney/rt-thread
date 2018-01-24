@@ -161,13 +161,7 @@ void rt_init_thread_entry(void* parameter)
     }
 #endif /* #ifdef RT_USING_RTGUI */
     
-    #if 1
-    init_thread = rt_thread_create("test_74hc595",
-                                   test_74hc595_drv_thread_entry, RT_NULL,
-                                   512, 31, 5);
-    if (init_thread != RT_NULL)
-        rt_thread_startup(init_thread);    
-    #endif
+    service_relay_init();
     service_key_start();
     service_storage_io_init();
 

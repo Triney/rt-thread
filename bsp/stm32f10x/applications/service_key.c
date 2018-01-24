@@ -382,7 +382,7 @@ void service_key_start(void)
     #if 1
     init_thread = rt_thread_create("scan_key",
                                    service_key_scan_thread_entry, RT_NULL,
-                                   256, 29, 5);
+                                   256, 20, 5);
     if (init_thread != RT_NULL)
         rt_thread_startup(init_thread);
     #endif
@@ -390,7 +390,7 @@ void service_key_start(void)
     #if 1
     init_thread = rt_thread_create("key_service",
                                    service_key_process, RT_NULL,
-                                   256, 30, 5);
+                                   256, 22, 5);
     if (init_thread != RT_NULL)
         rt_thread_startup(init_thread);
     #endif

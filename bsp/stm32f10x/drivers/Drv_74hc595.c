@@ -131,7 +131,7 @@ void Drv_74hc595_data_write(rt_uint32_t ulBitVal)
     delay_us(20);
     
     GPIO_ResetBits(ST_CP_PORT, ST_CP_PIN);
-    //delay(1);
+
     val = (rt_uint8_t)ulBitVal;
     drv_74hc595_shift(val);
     #if 1

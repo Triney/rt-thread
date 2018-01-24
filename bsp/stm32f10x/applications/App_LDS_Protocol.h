@@ -203,6 +203,8 @@ typedef enum DIM_DIR
 #define ADDRESS_AREA_LINK       0xC0
 #define ADDRESS_PRESET_START    0xF0
 
+#define ADDRESS_LAST_SCENSE          ADDRESS_CURRENT_PRESET
+
 #define LDS_TRACE   trace
 /*----------------------------------------------*
  * routines' implementations                    *

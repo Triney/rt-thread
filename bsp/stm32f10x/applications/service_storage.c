@@ -383,7 +383,7 @@ void service_storage_io_init(void)
                         service_flash_rw_req_process,
                         0,
                         1024,
-                        16,
+                        15,
                         25);
     if ( RT_NULL != tid )
     {
@@ -405,7 +405,7 @@ rt_err_t service_ee_write_req( rt_uint32_t addr,
 
     rt_mq_send(service_eep_rw_req, &rw_msg, sizeof(READ_WRITE_REQ_STRU));
 
-    if(RT_EOK != rt_mq_recv(service_eep_rw_ack, &ack_msg, sizeof(READ_WRITE_ACK_STRU), size/16 + 2))
+    if(RT_EOK != rt_mq_recv(service_eep_rw_ack, &ack_msg, sizeof(READ_WRITE_ACK_STRU), (size/16 + 1)*2))
     {
         return RT_ETIMEOUT;
     }

@@ -17,10 +17,21 @@
 
 ******************************************************************************/
 
+#ifndef __APP_TEST_DRV_H__
+#define __APP_TEST_DRV_H__
+
+
+#include "stm32f10x_conf.h"
+#include <Rtdef.h>
+
+#ifdef RT_USING_PIN
+#include "gpio.h"
+#include <drivers/pin.h>
+#endif
 /*----------------------------------------------*
  * external variables                           *
  *----------------------------------------------*/
-
+extern struct    rt_messagequeue  *mq_relay;
 /*----------------------------------------------*
  * external routine prototypes                  *
  *----------------------------------------------*/
@@ -29,6 +40,31 @@
  * internal routine prototypes                  *
  *----------------------------------------------*/
 
+typedef enum RELAY_REQ_TYPE
+{
+    E_REQ_RELAY_STATUS  = 0,
+    E_REQ_RELAY_ON      ,
+    E_REQ_RELAY_OFF     ,
+    E_REQ_RELAY_MAX     ,
+}RELAY_REQ_TYPE_ENUM;
+
+typedef struct RELAY_OUTPUT_REQ
+{
+    RELAY_REQ_TYPE_ENUM                req_type;
+    #pragma anon_unions
+    union
+    {
+        rt_uint32_t                     req_val;
+        rt_uint8_t                     *ack_ptr;
+        rt_uint32_t                    *responese_val;
+    };
+}RELAY_OUTPUT_REQ_STRU;
+
+typedef struct RELAY_ON_OFF_VAL
+{
+    rt_uint32_t     on_val;
+    rt_uint32_t     off_val;
+}RELAY_ON_OFF_VAL_STRU;
 /*----------------------------------------------*
  * project-wide global variables                *
  *----------------------------------------------*/
@@ -49,8 +85,6 @@
  * routines' implementations                    *
  *----------------------------------------------*/
 
-#ifndef __APP_TEST_DRV_H__
-#define __APP_TEST_DRV_H__
 
 
 #ifdef __cplusplus
@@ -58,9 +92,8 @@
 extern "C"{
 #endif
 #endif /* __cplusplus */
-
-extern void test_74hc595_drv_thread_entry(void *parameter);
-
+    
+void service_relay_init(void);
 
 #ifdef __cplusplus
 #if __cplusplus

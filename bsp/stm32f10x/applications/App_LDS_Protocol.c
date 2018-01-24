@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "service_storage.h"
+
 /*----------------------------------------------*
  * external variables                           *
  *----------------------------------------------*/
@@ -138,7 +139,7 @@ DEVICE_PRIORITY_REF_STRU                g_device_setting_ref =
 DEVICE_SETTING_FLAG_STRU                device_settiong_option; 
 
 rt_device_t         eep_device;
-rt_uint8_t          g_device_box_num     = 0xFF;
+rt_uint8_t          g_device_box_num_temp     = 0xFF;
 
 rt_uint8_t          tmp[8];
 /*----------------------------------------------*
@@ -172,6 +173,8 @@ static void DeviceChannelAct(void *parameter)
     rt_uint8_t      is_channal_act_on;  
     rt_uint32_t     value;
 
+    RELAY_OUTPUT_REQ_STRU   req;
+
     value   = 0;
     channel = *pst & 0x0f;
 
@@ -187,11 +190,21 @@ static void DeviceChannelAct(void *parameter)
 
     if(g_device_channel[channel].TargetLevel >= g_device_channel[channel].SwitchLevel)
     {
-        value |= (1<<4);
+        //value |= (1<<4);
+        req.req_type = E_REQ_RELAY_ON;
+    }
+    else
+    {
+        req.req_type = E_REQ_RELAY_OFF;
     }
 
+    #if 0
     value |= channel;
     rt_mb_send(mb_relay_acton, value);
+    #else
+    req.req_val = channel;
+    rt_mq_send(mq_relay, &req, sizeof(RELAY_OUTPUT_REQ_STRU));
+    #endif
     
     return;
 }
@@ -211,9 +224,18 @@ static rt_bool_t   IsChannelAreaAccept(rt_uint8_t channel,rt_uint8_t area)
     }
 }
 
-static rt_bool_t   IsChannelAppendAreaAccpet(rt_uint8_t channel,rt_uint8_t area)
-{    
-    return RT_TRUE;
+static rt_bool_t   IsChannelAppendAreaAccpet(rt_uint8_t channel,rt_uint8_t append_area)
+{
+    if((((append_area==0xff))) 
+      ||( (append_area==g_device_channel[channel].AppendArea)&&((append_area&0x80)==0x80))
+      ||(((append_area&0x80)!=0x80)&&(((g_device_channel[channel].AppendArea &0x80)!= 0x80))&&((append_area&g_device_channel[channel].AppendArea)!=0))  )		  
+    {
+        return RT_TRUE;
+    }
+    else
+    {
+        return RT_FALSE;
+    }
 }
 
 
@@ -453,7 +475,11 @@ static rt_size_t App_LDSCmd_Ctrl_Preset(void *parameter,rt_uint8_t *ack_buffer)
         }
 
         LDSSetChannelTargetLevel(i,Preset_Target_Level[i],fade_rate);
+
+        Preset_Target_Level[i] = ~g_device_channel[i].TargetLevel;
     }
+
+    service_ee_write_req(ADDRESS_LAST_SCENSE ,Preset_Target_Level , MAX_CHANNEL_NUM);
     return 0;
 }
 
@@ -478,6 +504,7 @@ rt_size_t App_LDS_CMD_Ctrl_Fade_Area_Off(st_cmd_field *parameter,rt_uint8_t *ack
 
         LDSSetChannelTargetLevel(i,DIM_LEVEL_MIN,fade_time);
     }
+    return 0;
 }
 #if 0
 rt_size_t App_LDS_CMD_Ctrl_Save_Preset(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
@@ -518,7 +545,6 @@ rt_size_t App_LDS_CMD_Ctrl_Save_Preset(st_cmd_field *parameter,rt_uint8_t *ack_b
 rt_size_t App_LDS_CMD_Ctrl_Fade_CH_Off(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
 {
     rt_uint8_t      i;
-    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
     rt_uint32_t     fade_time;
 
     st_cmd_field *rcv_cmd = (st_cmd_field *)parameter; 
@@ -550,7 +576,6 @@ rt_size_t App_LDS_CMD_Ctrl_Fade_CH_Off(st_cmd_field *parameter,rt_uint8_t *ack_b
 rt_size_t App_LDS_CMD_Ctrl_Fade_CH_On(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
 {
     rt_uint8_t      i;
-    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
     rt_uint32_t     fade_time;
 
     st_cmd_field *rcv_cmd = (st_cmd_field *)parameter; 
@@ -615,7 +640,6 @@ rt_size_t App_LDS_CMD_Ctrl_Fade_CH_To_Level_100ms(st_cmd_field *parameter,rt_uin
 {
     rt_uint8_t      i;
     rt_uint8_t      target_level;    
-    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
     rt_uint32_t     fade_time;
 
     st_cmd_field *rcv_cmd = (st_cmd_field *)parameter; 
@@ -656,7 +680,6 @@ rt_size_t App_LDS_CMD_Ctrl_Fade_CH_To_Level_1s(st_cmd_field *parameter,rt_uint8_
 {
     rt_uint8_t      i;
     rt_uint8_t      target_level;    
-    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
     rt_uint32_t     fade_time;
 
     st_cmd_field *rcv_cmd = (st_cmd_field *)parameter; 
@@ -695,7 +718,6 @@ rt_size_t App_LDS_CMD_Ctrl_Fade_CH_To_Level_1s(st_cmd_field *parameter,rt_uint8_
 rt_size_t App_LDS_CMD_Ctrl_Increa_CH_Level(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
 {
     rt_uint8_t      i;  
-    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
     rt_uint16_t     target_level;      
     rt_uint32_t     fade_time;
 
@@ -733,7 +755,6 @@ rt_size_t App_LDS_CMD_Ctrl_Increa_CH_Level(st_cmd_field *parameter,rt_uint8_t *a
 rt_size_t App_LDS_CMD_Ctrl_Decrea_CH_Level(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
 {
     rt_uint8_t      i;  
-    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
     rt_int16_t     target_level;      
     rt_uint32_t     fade_time;
 
@@ -773,7 +794,6 @@ rt_size_t App_LDS_CMD_Ctrl_Fade_CH_To_Level_1min(st_cmd_field *parameter,rt_uint
 {
     rt_uint8_t      i;
     rt_uint8_t      target_level;    
-    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
     rt_uint32_t     fade_time;
 
     st_cmd_field *rcv_cmd = (st_cmd_field *)parameter; 
@@ -891,6 +911,139 @@ rt_size_t App_LDS_CMD_Ctrl_Request_Area_Preset(st_cmd_field *parameter,rt_uint8_
     return 0;   
 
 }
+rt_size_t App_LDS_CMD_Ctrl_Panic(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{
+    st_cmd_field *rcv_cmd = (st_cmd_field *)parameter;
+    
+    rt_uint8_t      i;
+    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
+    rt_uint32_t     fade_rate;
+    rt_uint32_t     PresetAddress;
+
+    PresetAddress = ADDRESS_PRESET_START + 
+                (g_device_setting_ref.MaxPresetNum + 1)*MAX_CHANNEL_NUM;
+
+    fade_rate = GetDimFadeTime(rcv_cmd->dim_param.fade_rate_high,\
+                               rcv_cmd->dim_param.fade_rate_low);
+
+    service_ee_read_req(PresetAddress, Preset_Target_Level, MAX_CHANNEL_NUM);
+
+    for ( i = 0 ; i < MAX_CHANNEL_NUM; i++ )
+    {       
+        Preset_Target_Level[i] = ~Preset_Target_Level[i];
+
+        if ( 0xFF ==Preset_Target_Level[i] )
+        {
+            continue;
+        }
+
+        LDSSetChannelTargetLevel(i,Preset_Target_Level[i],fade_rate);
+    }
+    return 0;
+}    
+
+rt_size_t App_LDS_CMD_Ctrl_Unpanic(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{
+    st_cmd_field *rcv_cmd = (st_cmd_field *)parameter;
+    
+    rt_uint8_t      i;
+    rt_uint8_t      Preset_Target_Level[MAX_CHANNEL_NUM];
+    rt_uint32_t     fade_rate;
+    rt_uint32_t     PresetAddress;
+
+    PresetAddress = ADDRESS_PRESET_START + 
+                (g_device_setting_ref.MaxPresetNum + 2)*MAX_CHANNEL_NUM;
+
+    fade_rate = GetDimFadeTime(rcv_cmd->dim_param.fade_rate_high,\
+                               rcv_cmd->dim_param.fade_rate_low);
+
+    service_ee_read_req(PresetAddress, Preset_Target_Level, MAX_CHANNEL_NUM);
+
+    for ( i = 0 ; i < MAX_CHANNEL_NUM; i++ )
+    {       
+        Preset_Target_Level[i] = ~Preset_Target_Level[i];
+
+        if ( 0xFF ==Preset_Target_Level[i] )
+        {
+            continue;
+        }
+
+        LDSSetChannelTargetLevel(i,Preset_Target_Level[i],fade_rate);
+    }
+    return 0;
+} 
+rt_size_t App_LDS_CMD_Set_Area_Link(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{
+    st_cmd_field *rcv_cmd = (st_cmd_field *)parameter;
+    
+    rt_uint8_t      i;
+    rt_uint8_t     *area_link_ptr;
+    rt_uint32_t     Area_Link_Val[MAX_CHANNEL_NUM];
+
+
+    area_link_ptr = (rt_uint8_t *)(&Area_Link_Val[0]);
+
+    if ( RT_EOK != service_ee_read_req(ADDRESS_AREA_LINK, area_link_ptr, MAX_CHANNEL_NUM * 4))
+    {
+        return 0;
+    }
+    
+    for ( i = 0 ; i < MAX_CHANNEL_NUM ; i++ )
+    {
+        if (RT_FALSE == IsChannelAreaAccept(i, rcv_cmd->area))
+        {
+             area_link_ptr[i*4]  =0xff;
+             area_link_ptr[i*4+1]=0;														
+             area_link_ptr[i*4+2]=0;
+             area_link_ptr[i*4+3]=0;
+        }
+        else
+        {
+            if(RT_TRUE == IsChannelAppendAreaAccpet(i, rcv_cmd->area))
+            {
+                area_link_ptr[i*4]  =rcv_cmd->area;
+                area_link_ptr[i*4+1]=rcv_cmd->param[2];														
+                area_link_ptr[i*4+2]=rcv_cmd->param[1];
+                area_link_ptr[i*4+3]=rcv_cmd->param[0];
+            }    
+        }
+    }
+    service_ee_write_req(ADDRESS_AREA_LINK, area_link_ptr, MAX_CHANNEL_NUM * 4);
+
+    return 0;
+}
+
+rt_size_t App_LDS_CMD_Clear_Area_Link(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{
+    st_cmd_field *rcv_cmd = (st_cmd_field *)parameter;
+    
+    rt_uint8_t      i;
+    rt_uint8_t     *area_link_ptr;
+    rt_uint32_t     Area_Link_Val[MAX_CHANNEL_NUM];
+
+    area_link_ptr = (rt_uint8_t *)(&Area_Link_Val[0]);
+
+    for ( i = 0 ; i < MAX_CHANNEL_NUM ; i++ )
+    {
+        area_link_ptr[i*4]  =0xff;
+        area_link_ptr[i*4+1]=0;														
+        area_link_ptr[i*4+2]=0;
+        area_link_ptr[i*4+3]=0;
+    }
+    
+    service_ee_write_req(ADDRESS_AREA_LINK, area_link_ptr, MAX_CHANNEL_NUM * 4);
+    
+}
+rt_size_t App_LDS_CMD_Save_Current_Preset(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
+{
+    st_cmd_field *rcv_cmd = (st_cmd_field *)parameter;
+    
+    rt_uint8_t      i;
+    rt_uint8_t     *area_link_ptr;
+    rt_uint32_t     Area_Link_Val[MAX_CHANNEL_NUM];
+
+
+}
 const CTRL_PROCESS_HANDLER_STRU ctrl_handler_array[]=
 {    
     {E_Ctrl_Opcode_Preset               ,App_LDSCmd_Ctrl_Preset},
@@ -904,7 +1057,8 @@ const CTRL_PROCESS_HANDLER_STRU ctrl_handler_array[]=
     {E_Ctrl_Opcode_Dec_level            ,App_LDS_CMD_Ctrl_Decrea_CH_Level},    
     {E_Ctrl_Opcode_Request_channel_level,App_LDS_CMD_Ctrl_Request_CH_Lvl},        
     {E_Ctrl_Opcode_Request_current_preset ,App_LDS_CMD_Ctrl_Request_Area_Preset},        
-
+    {E_Ctrl_Opcode_Panic                ,App_LDS_CMD_Ctrl_Panic},
+    {E_Ctrl_Opcode_Un_panic             ,App_LDS_CMD_Ctrl_Unpanic},
 };
 rt_size_t   ctrl_hanler_cnt = sizeof(ctrl_handler_array)/sizeof(SETTING_PROCESS_HANDLER_STRU);
 rt_size_t App_LDS_Ctrl_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buffer)
@@ -1137,7 +1291,7 @@ rt_size_t App_LDS_BlockWrite_Handler(st_cmd_field *parameter,rt_uint8_t *ack_buf
         else
         {    
             rt_uint16_t     address;
-            rt_uint16_t     i,j;
+//            rt_uint16_t     i,j;
             rt_base_t       level;
 
             in = (rt_uint8_t *)parameter;
@@ -1363,6 +1517,24 @@ void App_CHxKey_Toggle_Output(void *parameter)
     }
 }
 
+void App_KeyX_Toggle_Display(void *parameter)
+{    
+    channelDataType *ptr;
+    if ( RT_NULL == parameter )
+    {
+        return;
+    }
+    
+    ptr = (channelDataType *)parameter;    
+
+    if ( ptr->action >= MAX_CHANNEL_NUM)
+    {
+        return;
+    }
+    
+    g_device_box_num_temp ^= (1<<ptr->action); 
+    
+}
 
 void App_LDS_Key_Normal_func_register(void)
 {
@@ -1398,7 +1570,8 @@ void App_Service_setting(void *parameter)
     if ( RT_FALSE == is_devocie_setting_mode)
     {
         is_devocie_setting_mode = RT_TRUE;
-        LDS_TRACE("enter setting mode \n");
+        LDS_TRACE("enter setting mode \n");       
+        g_device_box_num_temp = g_device_setting_ref.Device_box_num;
         App_LDS_Key_Setting_func_register();
     }
     else
@@ -1426,6 +1599,13 @@ void APP_LDS_Device_Init(void)
     #else
     service_ee_read_req(0,(rt_uint8_t *)&g_device_setting_ref,7);
     service_ee_read_req(12,&(g_device_setting_ref.StartDelay),1);
+
+    /* accoding to spec doc, max preset num must <96 */
+    if ( g_device_setting_ref.MaxPresetNum >=96)
+    {
+        g_device_setting_ref.MaxPresetNum = 95;
+        service_ee_read_req(6, &(g_device_setting_ref.MaxPresetNum), 1);
+    }
     #endif
     App_LDS_Device_Channel_Property_Get();
     
