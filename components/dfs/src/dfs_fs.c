@@ -22,6 +22,8 @@
  * 2005-02-22     Bernard      The first version.
  * 2010-06-30     Bernard      Optimize for RT-Thread RTOS
  * 2011-03-12     Bernard      fix the filesystem lookup issue.
+ * 2017-11-30     Bernard      fix the filesystem_operation_table issue.
+ * 2017-12-05     Bernard      fix the fs type search issue in mkfs.
  */
 
 #include <dfs_fs.h>
@@ -252,7 +254,7 @@ int dfs_mount(const char   *device_name,
 
     for (ops = &filesystem_operation_table[0];
            ops < &filesystem_operation_table[DFS_FILESYSTEM_TYPES_MAX]; ops++)
-        if ((ops != NULL) && (strcmp((*ops)->name, filesystemtype) == 0))
+        if ((*ops != NULL) && (strcmp((*ops)->name, filesystemtype) == 0))
             break;
 
     dfs_unlock();
@@ -453,7 +455,7 @@ int dfs_mkfs(const char *fs_name, const char *device_name)
     /* lock file system */
     dfs_lock();
     /* find the file system operations */
-    for (index = 0; index < DFS_FILESYSTEM_TYPES_MAX; index ++)
+    for (index = 0; index <= DFS_FILESYSTEM_TYPES_MAX; index ++)
     {
         if (filesystem_operation_table[index] != NULL &&
             strcmp(filesystem_operation_table[index]->name, fs_name) == 0)
@@ -461,7 +463,7 @@ int dfs_mkfs(const char *fs_name, const char *device_name)
     }
     dfs_unlock();
 
-    if (index < DFS_FILESYSTEM_TYPES_MAX)
+    if (index <= DFS_FILESYSTEM_TYPES_MAX)
     {
         /* find file system operation */
         const struct dfs_filesystem_ops *ops = filesystem_operation_table[index];
@@ -538,8 +540,12 @@ FINSH_FUNCTION_EXPORT(mkfs, make a file system);
 int df(const char *path)
 {
     int result;
+    int minor = 0;
     long long cap;
     struct statfs buffer;
+
+    int unit_index = 0;
+    char *unit_str[] = {"KB", "MB", "GB"};
 
     result = dfs_statfs(path ? path : NULL, &buffer);
     if (result != 0)
@@ -548,9 +554,17 @@ int df(const char *path)
         return -1;
     }
 
-    cap = buffer.f_bsize * buffer.f_bfree / 1024;
-    rt_kprintf("disk free: %d KB [ %d block, %d bytes per block ]\n",
-    (unsigned long)cap, buffer.f_bfree, buffer.f_bsize);
+    cap = ((long long)buffer.f_bsize) * ((long long)buffer.f_bfree) / 1024LL;
+    for (unit_index = 0; unit_index < 2; unit_index ++)
+    {
+        if (cap < 1024) break;
+
+        minor = (cap % 1024) * 10 / 1024; /* only one decimal point */
+        cap = cap / 1024;
+    }
+
+    rt_kprintf("disk free: %d.%d %s [ %d block, %d bytes per block ]\n",
+        (unsigned long)cap, minor, unit_str[unit_index], buffer.f_bfree, buffer.f_bsize);
     return 0;
 }
 FINSH_FUNCTION_EXPORT(df, get disk free);

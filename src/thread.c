@@ -185,6 +185,10 @@ static rt_err_t _rt_thread_init(struct rt_thread *thread,
                   0,
                   RT_TIMER_FLAG_ONE_SHOT);
 
+#ifdef RT_USING_MODULE
+    thread->module_id = RT_NULL;
+#endif
+
     /* initialize signal */
 #ifdef RT_USING_SIGNALS
     thread->sig_mask    = 0x00;
@@ -534,6 +538,23 @@ rt_err_t rt_thread_delay(rt_tick_t tick)
 RTM_EXPORT(rt_thread_delay);
 
 /**
+ * This function will let current thread delay for some milliseconds.
+ *
+ * @param tick the delay time
+ *
+ * @return RT_EOK
+ */
+rt_err_t rt_thread_mdelay(rt_int32_t ms)
+{
+    rt_tick_t tick;
+
+    tick = rt_tick_from_millisecond(ms);
+
+    return rt_thread_sleep(tick);
+}
+RTM_EXPORT(rt_thread_mdelay);
+
+/**
  * This function will control thread behaviors according to control command.
  *
  * @param thread the specified thread to be controlled
@@ -634,7 +655,7 @@ rt_err_t rt_thread_suspend(rt_thread_t thread)
 
     if ((thread->stat & RT_THREAD_STAT_MASK) != RT_THREAD_READY)
     {
-        RT_DEBUG_LOG(RT_DEBUG_THREAD, ("thread suspend: thread disorder, %d\n",
+        RT_DEBUG_LOG(RT_DEBUG_THREAD, ("thread suspend: thread disorder, 0x%2x\n",
                                        thread->stat));
 
         return -RT_ERROR;
@@ -644,7 +665,7 @@ rt_err_t rt_thread_suspend(rt_thread_t thread)
     temp = rt_hw_interrupt_disable();
 
     /* change thread stat */
-    thread->stat = RT_THREAD_SUSPEND;
+    thread->stat = RT_THREAD_SUSPEND | (thread->stat & ~RT_THREAD_STAT_MASK);
     rt_schedule_remove_thread(thread);
 
     /* stop thread timer anyway */
@@ -746,14 +767,13 @@ rt_thread_t rt_thread_find(char *name)
     struct rt_object *object;
     struct rt_list_node *node;
 
-    extern struct rt_object_information rt_object_container[];
-
     /* enter critical */
     if (rt_thread_self() != RT_NULL)
         rt_enter_critical();
 
     /* try to find device object */
-    information = &rt_object_container[RT_Object_Class_Thread];
+    information = rt_object_get_information(RT_Object_Class_Thread);
+    RT_ASSERT(information != RT_NULL);
     for (node  = information->object_list.next;
          node != &(information->object_list);
          node  = node->next)

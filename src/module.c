@@ -299,6 +299,9 @@ void rt_module_init_object_container(struct rt_module *module)
 {
     RT_ASSERT(module != RT_NULL);
 
+    /* clear all of object information */
+    rt_memset(&module->module_object[0], 0x0, sizeof(module->module_object));
+
     /* initialize object container - thread */
     rt_list_init(&(module->module_object[RT_Object_Class_Thread].object_list));
     module->module_object[RT_Object_Class_Thread].object_size = sizeof(struct rt_thread);
@@ -633,7 +636,7 @@ static struct rt_module *_load_shared_object(const char *name,
             length = rt_strlen((const char *)(strtab + symtab[i].st_name)) + 1;
 
             module->symtab[count].addr =
-                (void *)(module->module_space + symtab[i].st_value);
+                (void *)(module->module_space + symtab[i].st_value - module->vstart_addr);
             module->symtab[count].name = rt_malloc(length);
             rt_memset((void *)module->symtab[count].name, 0, length);
             rt_memcpy((void *)module->symtab[count].name,
@@ -819,6 +822,15 @@ static struct rt_module* _load_relocated_object(const char *name,
                         rt_module_arm_relocate(module, rel,
                                                (Elf32_Addr)data_addr + sym->st_value);
                     }
+                }
+                else if (ELF_ST_TYPE(sym->st_info) == STT_FUNC)
+                {
+                    /* relocate function */
+                    rt_module_arm_relocate(module, rel,
+                                           (Elf32_Addr)((rt_uint8_t *)
+                                                        module->module_space
+                                                        - module_addr
+                                                        + sym->st_value));
                 }
             }
             else if (ELF_ST_TYPE(sym->st_info) == STT_FUNC)
@@ -1489,6 +1501,7 @@ rt_err_t rt_module_unload(rt_module_t module)
 {
     struct rt_object *object;
     struct rt_list_node *list;
+	rt_bool_t mdelete = RT_TRUE;
 
     RT_DEBUG_NOT_IN_INTERRUPT;
 
@@ -1499,6 +1512,9 @@ rt_err_t rt_module_unload(rt_module_t module)
     rt_enter_critical();
     if (!(module->parent.flag & RT_MODULE_FLAG_WITHOUTENTRY))
     {
+    	/* delete module in main thread destroy */
+		mdelete = RT_FALSE;
+    
         /* delete all sub-threads */
         list = &module->module_object[RT_Object_Class_Thread].object_list;
         while (list->next != list)
@@ -1531,6 +1547,11 @@ rt_err_t rt_module_unload(rt_module_t module)
     }
 #endif
 
+	if (mdelete == RT_TRUE)
+	{
+		rt_module_destroy(module);
+	}
+
     return RT_EOK;
 }
 
@@ -1547,15 +1568,14 @@ rt_module_t rt_module_find(const char *name)
     struct rt_object *object;
     struct rt_list_node *node;
 
-    extern struct rt_object_information rt_object_container[];
-
     RT_DEBUG_NOT_IN_INTERRUPT;
 
     /* enter critical */
     rt_enter_critical();
 
     /* try to find device object */
-    information = &rt_object_container[RT_Object_Class_Module];
+    information = rt_object_get_information(RT_Object_Class_Module);
+    RT_ASSERT(information != RT_NULL);
     for (node = information->object_list.next;
          node != &(information->object_list);
          node = node->next)

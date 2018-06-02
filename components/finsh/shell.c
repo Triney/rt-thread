@@ -50,9 +50,11 @@
 #endif
 
 /* finsh thread */
+#ifndef RT_USING_HEAP
 static struct rt_thread finsh_thread;
 ALIGN(RT_ALIGN_SIZE)
 static char finsh_thread_stack[FINSH_THREAD_STACK_SIZE];
+#endif
 struct finsh_shell *shell;
 
 #if defined(FINSH_USING_MSH) || (defined(RT_USING_DFS) && defined(DFS_USING_WORKDIR))
@@ -233,7 +235,7 @@ static void finsh_wait_auth(void)
     rt_size_t cur_pos = 0;
     /* password not set */
     if (rt_strlen(finsh_get_password()) == 0) return;
-    
+
     while (1)
     {
         rt_kprintf("Password for login: ");
@@ -372,7 +374,7 @@ static void shell_push_history(struct finsh_shell *shell)
         if (shell->history_count >= FINSH_HISTORY_LINES)
         {
             /* if current cmd is same as last cmd, don't push */
-            if (memcmp(&shell->cmd_history[FINSH_HISTORY_LINES - 1], shell->line, shell->line_position))
+            if (memcmp(&shell->cmd_history[FINSH_HISTORY_LINES - 1], shell->line, FINSH_CMD_SIZE))
             {
                 /* move history */
                 int index;
@@ -391,7 +393,7 @@ static void shell_push_history(struct finsh_shell *shell)
         else
         {
             /* if current cmd is same as last cmd, don't push */
-            if (shell->history_count == 0 || memcmp(&shell->cmd_history[shell->history_count - 1], shell->line, shell->line_position))
+            if (shell->history_count == 0 || memcmp(&shell->cmd_history[shell->history_count - 1], shell->line, FINSH_CMD_SIZE))
             {
                 shell->current_history = shell->history_count;
                 memset(&shell->cmd_history[shell->history_count][0], 0, FINSH_CMD_SIZE);
@@ -414,7 +416,11 @@ void finsh_thread_entry(void *parameter)
     char ch;
 
     /* normal is echo mode */
+#ifndef FINSH_ECHO_DISABLE_DEFAULT
     shell->echo_mode = 1;
+#else
+    shell->echo_mode = 0;
+#endif
 
 #ifndef FINSH_USING_MSH_ONLY
     finsh_init(&shell->parser);
@@ -541,8 +547,8 @@ void finsh_thread_entry(void *parameter)
             }
         }
 
-        /* handle CR key */
-        if (ch == '\0') continue;
+        /* received null or error */
+        if (ch == '\0' || ch == 0xFF) continue;
         /* handle tab key */
         else if (ch == '\t')
         {
@@ -717,7 +723,8 @@ __declspec(allocate("FSymTab$z")) const struct finsh_syscall __fsym_end =
  */
 int finsh_system_init(void)
 {
-    rt_err_t result;
+    rt_err_t result = RT_EOK;
+    rt_thread_t tid;
 
 #ifdef FINSH_USING_SYMTAB
 #ifdef __CC_ARM                 /* ARM C Compiler */
@@ -760,29 +767,31 @@ int finsh_system_init(void)
 #endif
 #endif
 
-    /* create or set shell structure */
 #ifdef RT_USING_HEAP
-    shell = (struct finsh_shell *)rt_malloc(sizeof(struct finsh_shell));
+    /* create or set shell structure */
+    shell = (struct finsh_shell *)rt_calloc(1, sizeof(struct finsh_shell));
     if (shell == RT_NULL)
     {
         rt_kprintf("no memory for shell\n");
         return -1;
     }
+    tid = rt_thread_create(FINSH_THREAD_NAME,
+                           finsh_thread_entry, RT_NULL,
+                           FINSH_THREAD_STACK_SIZE, FINSH_THREAD_PRIORITY, 10);
 #else
     shell = &_shell;
-#endif
-
-    memset(shell, 0, sizeof(struct finsh_shell));
-
-    rt_sem_init(&(shell->rx_sem), "shrx", 0, 0);
+    tid = &finsh_thread;
     result = rt_thread_init(&finsh_thread,
-                            "tshell",
+                            FINSH_THREAD_NAME,
                             finsh_thread_entry, RT_NULL,
                             &finsh_thread_stack[0], sizeof(finsh_thread_stack),
                             FINSH_THREAD_PRIORITY, 10);
+#endif /* RT_USING_HEAP */
 
-    if (result == RT_EOK)
-        rt_thread_startup(&finsh_thread);
+    rt_sem_init(&(shell->rx_sem), "shrx", 0, 0);
+
+    if (tid != NULL && result == RT_EOK)
+        rt_thread_startup(tid);
     return 0;
 }
 INIT_APP_EXPORT(finsh_system_init);

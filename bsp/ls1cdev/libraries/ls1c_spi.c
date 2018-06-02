@@ -19,10 +19,10 @@
  *
  * Change Logs:
  * Date           Author       Notes
- * 2017-10-23     ÇÚÎª±¾       first version
+ * 2017-10-23     å‹¤ä¸ºæœ¬       first version
  */
 
-// Ó²¼şspi½Ó¿ÚÔ´ÎÄ¼ş
+// ç¡¬ä»¶spiæ¥å£æºæ–‡ä»¶
 
 
 #include <string.h>
@@ -32,53 +32,13 @@
 #include "ls1c_spi.h"
 
 
-// ¼Ä´æÆ÷Æ«ÒÆ
-#define LS1C_SPI_SPCR_OFFSET                (0)     // ¿ØÖÆ¼Ä´æÆ÷
-#define LS1C_SPI_SPSR_OFFSET                (1)     // ×´Ì¬¼Ä´æÆ÷
-#define LS1C_SPI_TxFIFO_OFFSET              (2)     // ·¢ËÍµÄÊı¾İ¼Ä´æÆ÷£¬Óë½ÓÊÕÊı¾İ¼Ä´æÆ÷µÄÆ«ÒÆÏàÍ¬
-#define LS1C_SPI_RxFIFO_OFFSET              (2)     // ½ÓÊÕµÄÊı¾İ¼Ä´æÆ÷£¬Óë·¢ËÍÊı¾İ¼Ä´æÆ÷µÄÆ«ÒÆÏàÍ¬
-#define LS1C_SPI_SPER_OFFSET                (3)     // Íâ²¿¼Ä´æÆ÷
-#define LS1C_SPI_SFC_PARAM_OFFSET           (4)     // ²ÎÊı¿ØÖÆ¼Ä´æÆ÷
-#define LS1C_SPI_SFC_SOFTCS_OFFSET          (5)     // Æ¬Ñ¡¿ØÖÆ¼Ä´æÆ÷
-#define LS1C_SPI_SFC_TIMING_OFFSET          (6)     // Ê±Ğò¿ØÖÆ¼Ä´æÆ÷
-
-// ¼Ä´æÆ÷SPCRÖĞµÄÎ»Óò
-#define LS1C_SPI_SPCR_SPIE_BIT              (7)
-#define LS1C_SPI_SPCR_SPIE_MASK             (0x01 << LS1C_SPI_SPCR_SPIE_BIT)
-#define LS1C_SPI_SPCR_SPE_BIT               (6)
-#define LS1C_SPI_SPCR_SPE_MASK              (0x01 << LS1C_SPI_SPCR_SPE_BIT)
-#define LS1C_SPI_SPCR_CPOL_BIT              (3)
-#define LS1C_SPI_SPCR_CPOL_MASK             (0x01 << LS1C_SPI_SPCR_CPOL_BIT)
-#define LS1C_SPI_SPCR_CPHA_BIT              (2)
-#define LS1C_SPI_SPCR_CPHA_MASK             (0x01 << LS1C_SPI_SPCR_CPHA_BIT)
-#define LS1C_SPI_SPCR_SPR_BIT               (0)
-#define LS1C_SPI_SPCR_SPR_MASK              (0x03 << LS1C_SPI_SPCR_SPR_BIT)
-
-// ¼Ä´æÆ÷SPSRÖĞµÄÎ»Óò
-#define LS1C_SPI_SPSR_SPIF_BIT              (7)
-#define LS1C_SPI_SPSR_SPIF_MASK             (0x01 << LS1C_SPI_SPSR_SPIF_BIT)
-#define LS1C_SPI_SPSR_WCOL_BIT              (6)
-#define LS1C_SPI_SPSR_WCOL_MASK             (0x01 << LS1C_SPI_SPSR_WCOL_BIT)
-
-// ¼Ä´æÆ÷SPERÖĞµÄÎ»Óò
-#define LS1C_SPI_SPER_SPRE_BIT              (0)
-#define LS1C_SPI_SPER_SPRE_MASK             (0x3 << LS1C_SPI_SPER_SPRE_BIT)
-
-// ¼Ä´æÆ÷SFC_SOFTCSµÄÎ»Óò
-#define LS1C_SPI_SFC_SOFTCS_CSN_BIT         (4)
-#define LS1C_SPI_SFC_SOFTCS_CSN_MASK        (0x0f << LS1C_SPI_SFC_SOFTCS_CSN_BIT)
-#define LS1C_SPI_SFC_SOFTCS_CSEN_BIT        (0)
-#define LS1C_SPI_SFC_SOFTCS_CSEN_MASK       (0x0f << LS1C_SPI_SFC_SOFTCS_CSEN_BIT)
-
-// ·¢ËÍ³¬Ê±µÄÃÅÏŞÖµ
-#define LS1C_SPI_TX_TIMEOUT                 (20000)
 
 
 /*
- * »ñÈ¡Ö¸¶¨SPIÄ£¿éµÄ»ùµØÖ·
- * @SPIx SPIÄ£¿éµÄ±àºÅ
+ * è·å–æŒ‡å®šSPIæ¨¡å—çš„åŸºåœ°å€
+ * @SPIx SPIæ¨¡å—çš„ç¼–å·
  */
-inline void *spi_get_base(ls1c_spi_t SPIx)
+inline void *ls1c_spi_get_base(unsigned char SPIx)
 {
     void *base = NULL;
 
@@ -102,16 +62,13 @@ inline void *spi_get_base(ls1c_spi_t SPIx)
 
 
 /*
- * ´òÓ¡Ö¸¶¨SPIÄ£¿éµÄËùÓĞ¼Ä´æÆ÷µÄÖµ
- * @spi_info_p SPIÄ£¿éĞÅÏ¢
+ * æ‰“å°æŒ‡å®šSPIæ¨¡å—çš„æ‰€æœ‰å¯„å­˜å™¨çš„å€¼
+ * @spi_base åŸºåœ°å€
  */
-void spi_print_all_regs_info(ls1c_spi_info_t *spi_info_p)
+void ls1c_spi_print_all_regs_info(void *spi_base)
 {
-    void *spi_base = spi_get_base(spi_info_p->SPIx);
-
-    rt_kprintf("[%s] SPI%d's info:\r\n\
-              SPCR=0x%x, SPSR=0x%x, SPER=0x%x, SFC_PARAM=0x%x, SFC_SOFTCS=0x%x, SFC_TIMING=0x%x\r\n",
-              __FUNCTION__, spi_info_p->SPIx,
+    rt_kprintf("[%s] SPCR=0x%x, SPSR=0x%x, SPER=0x%x, SFC_PARAM=0x%x, SFC_SOFTCS=0x%x, SFC_TIMING=0x%x\r\n",
+              __FUNCTION__, 
               reg_read_8(spi_base + LS1C_SPI_SPCR_OFFSET),
               reg_read_8(spi_base + LS1C_SPI_SPSR_OFFSET),
               reg_read_8(spi_base + LS1C_SPI_SPER_OFFSET),
@@ -124,11 +81,11 @@ void spi_print_all_regs_info(ls1c_spi_info_t *spi_info_p)
 
 
 /*
- * ¸ù¾İSPIÊ±ÖÓÆµÂÊ¼ÆËã·ÖÆµÏµÊı
- * @max_speed_hz SPI×î´óÍ¨ĞÅËÙ¶È
- * @ret ·ÖÆµÏµÊı
+ * æ ¹æ®SPIæ—¶é’Ÿé¢‘ç‡è®¡ç®—åˆ†é¢‘ç³»æ•°
+ * @max_speed_hz SPIæœ€å¤§é€šä¿¡é€Ÿåº¦
+ * @ret åˆ†é¢‘ç³»æ•°
  */
-unsigned int spi_get_div(unsigned int max_speed_hz)
+unsigned int ls1c_spi_get_div(unsigned int max_speed_hz)
 {
     unsigned long clk = 0;
     unsigned int div = 0;
@@ -188,28 +145,28 @@ unsigned int spi_get_div(unsigned int max_speed_hz)
 
 
 /*
- * ÉèÖÃÊ±ÖÓ
- * @spi_info_p SPIÄ£¿éĞÅÏ¢
+ * è®¾ç½®æ—¶é’Ÿ
+ * @spi_base åŸºåœ°å€
+ * @max_hz æœ€å¤§é¢‘ç‡ï¼Œå•ä½hz
  */
-void spi_set_clock(ls1c_spi_info_t *spi_info_p)
+void ls1c_spi_set_clock(void *spi_base, unsigned long max_hz)
 {
-    void *spi_base = spi_get_base(spi_info_p->SPIx);
     unsigned int div = 0;
     unsigned char val = 0;
 
-    // »ñÈ¡·ÖÆµÏµÊı
-    div = spi_get_div(spi_info_p->max_speed_hz);
+    // è·å–åˆ†é¢‘ç³»æ•°
+    div = ls1c_spi_get_div(max_hz);
 
-    // ÉèÖÃspr
+    // è®¾ç½®spr
     val = reg_read_8(spi_base + LS1C_SPI_SPCR_OFFSET);
-    val &= (~LS1C_SPI_SPCR_SPR_MASK);                       // sprÇåÁã
-    val |= (div & LS1C_SPI_SPCR_SPR_MASK);                  // ÉèÖÃĞÂµÄspr
+    val &= (~LS1C_SPI_SPCR_SPR_MASK);                       // spræ¸…é›¶
+    val |= (div & LS1C_SPI_SPCR_SPR_MASK);                  // è®¾ç½®æ–°çš„spr
     reg_write_8(val, spi_base + LS1C_SPI_SPCR_OFFSET);
 
-    // ÉèÖÃspre
+    // è®¾ç½®spre
     val = reg_read_8(spi_base + LS1C_SPI_SPER_OFFSET);
-    val &= (~LS1C_SPI_SPER_SPRE_MASK);                      // spreÇåÁã
-    val |= ((div >> 2) & LS1C_SPI_SPER_SPRE_MASK);        // ÉèÖÃĞÂµÄspre
+    val &= (~LS1C_SPI_SPER_SPRE_MASK);                      // spreæ¸…é›¶
+    val |= ((div >> 2) & LS1C_SPI_SPER_SPRE_MASK);        // è®¾ç½®æ–°çš„spre
     reg_write_8(val, spi_base + LS1C_SPI_SPER_OFFSET);
 
     return ;
@@ -217,23 +174,24 @@ void spi_set_clock(ls1c_spi_info_t *spi_info_p)
 
 
 /*
- * ÉèÖÃÍ¨ĞÅÄ£Ê½(Ê±ÖÓ¼«ĞÔºÍÏàÎ»)
- * @spi_info_p SPIÄ£¿éĞÅÏ¢
+ * è®¾ç½®é€šä¿¡æ¨¡å¼(æ—¶é’Ÿææ€§å’Œç›¸ä½)
+ * @spi_base åŸºåœ°å€
+ * @cpol æ—¶é’Ÿææ€§
+ * @cpha æ—¶é’Ÿç›¸ä½
  */
-void spi_set_mode(ls1c_spi_info_t *spi_info_p)
+void ls1c_spi_set_mode(void *spi_base, unsigned char cpol, unsigned char cpha)
 {
-    void *spi_base = spi_get_base(spi_info_p->SPIx);
     unsigned char val = 0;
 
     val = reg_read_8(spi_base + LS1C_SPI_SPCR_OFFSET);
     
-    // ÉèÖÃÊ±ÖÓ¼«ĞÔ--cpol
-    val &= (~LS1C_SPI_SPCR_CPOL_MASK);                      // cpolÇå0
-    val |= (spi_info_p->cpol << LS1C_SPI_SPCR_CPOL_BIT);    // Ğ´ÈëĞÂµÄcpol
+    // è®¾ç½®æ—¶é’Ÿææ€§--cpol
+    val &= (~LS1C_SPI_SPCR_CPOL_MASK);                  // cpolæ¸…0
+    val |= (cpol << LS1C_SPI_SPCR_CPOL_BIT);            // å†™å…¥æ–°çš„cpol
     
-    // ÉèÖÃÊ±ÖÓÏàÎ»--cpha
-    val &= (~LS1C_SPI_SPCR_CPHA_MASK);                      // cphaÇå0
-    val |= (spi_info_p->cpha << LS1C_SPI_SPCR_CPHA_BIT);    // Ğ´ÈëĞÂµÄcpha
+    // è®¾ç½®æ—¶é’Ÿç›¸ä½--cpha
+    val &= (~LS1C_SPI_SPCR_CPHA_MASK);                  // cphaæ¸…0
+    val |= (cpha << LS1C_SPI_SPCR_CPHA_BIT);            // å†™å…¥æ–°çš„cpha
     
     reg_write_8(val, spi_base + LS1C_SPI_SPCR_OFFSET);
 
@@ -242,24 +200,24 @@ void spi_set_mode(ls1c_spi_info_t *spi_info_p)
 
 
 /*
- * ÉèÖÃÖ¸¶¨Æ¬Ñ¡ÎªÖ¸¶¨×´Ì¬
- * @spi_info_p SPIÄ£¿éĞÅÏ¢
- * @new_status Æ¬Ñ¡Òı½ÅµÄĞÂ×´Ì¬£¬È¡ÖµÎª0»ò1£¬¼´¸ßµçÆ½»òµÍµçÆ½
+ * è®¾ç½®æŒ‡å®šç‰‡é€‰ä¸ºæŒ‡å®šçŠ¶æ€
+ * @spi_base åŸºåœ°å€
+ * @cs ç‰‡é€‰
+ * @new_status ç‰‡é€‰å¼•è„šçš„æ–°çŠ¶æ€ï¼Œå–å€¼ä¸º0æˆ–1ï¼Œå³é«˜ç”µå¹³æˆ–ä½ç”µå¹³
  */
-void spi_set_cs(ls1c_spi_info_t *spi_info_p, int new_status)
+void ls1c_spi_set_cs(void *spi_base, unsigned char cs, int new_status)
 {
-    void *spi_base = spi_get_base(spi_info_p->SPIx);
-    unsigned char cs = spi_info_p->cs;
     unsigned char val = 0;
 
-    val = 0xf0 | (0x01 << cs);          // È«²¿csn=1£¬Ö¸¶¨µÄcsen=1
+    val = reg_read_8(spi_base + LS1C_SPI_SFC_SOFTCS_OFFSET);
+    val |= 0x01 << cs ; //å¯¹åº”çš„csen=1  
     if (new_status)         // cs = 1
     {
-        val |= (0x10 << cs);            // Ö¸¶¨csn=1
+        val |= (0x10 << cs);            // æŒ‡å®šcsn=1
     }
     else                    // cs = 0
     {
-        val &= ~(0x10 << cs);           // Ö¸¶¨csn=0
+        val &= ~(0x10 << cs);           // æŒ‡å®šcsn=0
     }
     reg_write_8(val, spi_base + LS1C_SPI_SFC_SOFTCS_OFFSET);
 
@@ -268,50 +226,11 @@ void spi_set_cs(ls1c_spi_info_t *spi_info_p, int new_status)
 
 
 /*
- * ³õÊ¼»¯Ö¸¶¨SPIÄ£¿é
- * @spi_info_p SPIÄ£¿éĞÅÏ¢
+ * ç­‰å¾…æ”¶å‘å®Œæˆ
+ * @spi_base åŸºåœ°å€
  */
-void spi_init(ls1c_spi_info_t *spi_info_p)
+inline void ls1c_spi_wait_txrx_done(void *spi_base)
 {
-    void *spi_base = spi_get_base(spi_info_p->SPIx);
-    unsigned char val = 0;
-
-    // Ê¹ÄÜSPI¿ØÖÆÆ÷£¬masterÄ£Ê½£¬¹Ø±ÕÖĞ¶Ï
-    reg_write_8(0x53, spi_base + LS1C_SPI_SPCR_OFFSET);
-
-    // Çå¿Õ×´Ì¬¼Ä´æÆ÷
-    reg_write_8(0xc0, spi_base + LS1C_SPI_SPSR_OFFSET);
-
-    // 1×Ö½Ú²úÉúÖĞ¶Ï£¬²ÉÑù(¶Á)Óë·¢ËÍ(Ğ´)Ê±»úÍ¬Ê±
-    reg_write_8(0x03, spi_base + LS1C_SPI_SPER_OFFSET);
-
-    // ¹Ø±ÕSPI flash
-    val = reg_read_8(spi_base + LS1C_SPI_SFC_PARAM_OFFSET);
-    val &= 0xfe;
-    reg_write_8(val, spi_base + LS1C_SPI_SFC_PARAM_OFFSET);
-
-    // spi flashÊ±Ğò¿ØÖÆ¼Ä´æÆ÷
-    reg_write_8(0x05, spi_base + LS1C_SPI_SFC_TIMING_OFFSET);
-
-    // ÉèÖÃÊ±ÖÓ
-    spi_set_clock(spi_info_p);
-
-    // ÉèÖÃÍ¨ĞÅÄ£Ê½(Ê±ÖÓ¼«ĞÔºÍÏàÎ»)
-    spi_set_mode(spi_info_p);
-
-    // ´òÓ¡¼Ä´æÆ÷ĞÅÏ¢(ÓÃÓÚµ÷ÊÔ)
-//    spi_print_all_regs_info(spi_info_p);
-
-    return ;
-}
-
-
-/*
- * µÈ´ıÊÕ·¢Íê³É
- */
-inline void spi_wait_txrx_done(ls1c_spi_info_t *spi_info_p)
-{
-    void *spi_base = spi_get_base(spi_info_p->SPIx);
     int timeout = LS1C_SPI_TX_TIMEOUT;
 
     while (timeout--)
@@ -325,25 +244,25 @@ inline void spi_wait_txrx_done(ls1c_spi_info_t *spi_info_p)
 
 
 /*
- * ÇåÖĞ¶ÏºÍ±êÖ¾Î»
+ * æ¸…ä¸­æ–­å’Œæ ‡å¿—ä½
+ * @spi_base åŸºåœ°å€
  */
-inline void spi_clear(ls1c_spi_info_t *spi_info_p)
+inline void ls1c_spi_clear(void *spi_base)
 {
-    void *spi_base = spi_get_base(spi_info_p->SPIx);
     unsigned char val = 0;
 
-    // ÇåÖĞ¶Ï
+    // æ¸…ä¸­æ–­
     val = reg_read_8(spi_base + LS1C_SPI_SPSR_OFFSET);
     val |= LS1C_SPI_SPSR_SPIF_MASK;
     reg_write_8(val, spi_base + LS1C_SPI_SPSR_OFFSET);
 
-    // ÇåÒç³ö±êÖ¾Î»(Write-Collision Clear)
+    // æ¸…æº¢å‡ºæ ‡å¿—ä½(Write-Collision Clear)
     val = reg_read_8(spi_base + LS1C_SPI_SPSR_OFFSET);
     if (LS1C_SPI_SPSR_WCOL_MASK & val)
     {
-        rt_kprintf("[%s] clear register SPSR's wcol!\r\n");       // ÊÖ²áºÍlinuxÔ´ÂëÖĞ²»Ò»Ñù£¬¼Ó¸ö´òÓ¡¿´¿´
-        reg_write_8(val & ~LS1C_SPI_SPSR_WCOL_MASK, spi_base + LS1C_SPI_SPSR_OFFSET);   // Ğ´0£¬linuxÔ´ÂëÖĞÊÇĞ´0
-//        reg_write_8(val | LS1C_SPI_SPSR_WCOL_MASK, spi_base + LS1C_SPI_SPSR_OFFSET);  // Ğ´1£¬°´ÕÕ1cÊÖ²á£¬Ó¦¸ÃĞ´1
+        rt_kprintf("[%s] clear register SPSR's wcol!\r\n");       // æ‰‹å†Œå’Œlinuxæºç ä¸­ä¸ä¸€æ ·ï¼ŒåŠ ä¸ªæ‰“å°çœ‹çœ‹
+        reg_write_8(val & ~LS1C_SPI_SPSR_WCOL_MASK, spi_base + LS1C_SPI_SPSR_OFFSET);   // å†™0ï¼Œlinuxæºç ä¸­æ˜¯å†™0
+//        reg_write_8(val | LS1C_SPI_SPSR_WCOL_MASK, spi_base + LS1C_SPI_SPSR_OFFSET);  // å†™1ï¼ŒæŒ‰ç…§1cæ‰‹å†Œï¼Œåº”è¯¥å†™1
     }
 
     return ;
@@ -352,24 +271,23 @@ inline void spi_clear(ls1c_spi_info_t *spi_info_p)
 
 
 /*
- * Í¨¹ıÖ¸¶¨SPI·¢ËÍ½ÓÊÕÒ»¸ö×Ö½Ú
- * ×¢Òâ£¬ÔÚ¶àÈÎÎñµÄÏµÍ³ÖĞ£¬´Ëº¯ÊıĞèÒª»¥³â¡£
- * ¼´±£Ö¤ÔÚºÍÄ³¸ö´ÓÉè±¸ÊÕ·¢Ä³¸ö×Ö½ÚµÄ¹ı³ÌÖĞ£¬²»ÄÜ±»ÇĞ»»µ½ÆäËüÈÎÎñÍ¬Ê±ÓëÁíÍâµÄÔÚÍ¬Ò»¸öSPI×ÜÏßÉÏµÄ´ÓÉè±¸Í¨ĞÅ
- * ÒòÎªÁúĞ¾1cµÄÃ¿Â·SPIÉÏ¿ÉÄÜ½ÓÓĞ²»Í¬µÄ´ÓÉè±¸£¬Í¨ĞÅÆµÂÊ¡¢Ä£Ê½µÈ¿ÉÄÜ²»Í¬
- * @spi_info_p SPI½Ó¿Ú
- * @tx_ch ´ı·¢ËÍµÄÊı¾İ
- * @ret ÊÕµ½µÄÊı¾İ
+ * é€šè¿‡æŒ‡å®šSPIå‘é€æ¥æ”¶ä¸€ä¸ªå­—èŠ‚
+ * æ³¨æ„ï¼Œåœ¨å¤šä»»åŠ¡çš„ç³»ç»Ÿä¸­ï¼Œæ­¤å‡½æ•°éœ€è¦äº’æ–¥ã€‚
+ * å³ä¿è¯åœ¨å’ŒæŸä¸ªä»è®¾å¤‡æ”¶å‘æŸä¸ªå­—èŠ‚çš„è¿‡ç¨‹ä¸­ï¼Œä¸èƒ½è¢«åˆ‡æ¢åˆ°å…¶å®ƒä»»åŠ¡åŒæ—¶ä¸å¦å¤–çš„åœ¨åŒä¸€ä¸ªSPIæ€»çº¿ä¸Šçš„ä»è®¾å¤‡é€šä¿¡
+ * å› ä¸ºé¾™èŠ¯1cçš„æ¯è·¯SPIä¸Šå¯èƒ½æ¥æœ‰ä¸åŒçš„ä»è®¾å¤‡ï¼Œé€šä¿¡é¢‘ç‡ã€æ¨¡å¼ç­‰å¯èƒ½ä¸åŒ
+ * @spi_base åŸºåœ°å€
+ * @tx_ch å¾…å‘é€çš„æ•°æ®
+ * @ret æ”¶åˆ°çš„æ•°æ®
  */
-unsigned char spi_txrx_byte(ls1c_spi_info_t *spi_info_p, unsigned char tx_ch)
+unsigned char ls1c_spi_txrx_byte(void *spi_base, unsigned char tx_ch)
 {
-    void *spi_base = spi_get_base(spi_info_p->SPIx);
     unsigned char rx_ch = 0;
 
-    // ÊÕ·¢Êı¾İ
-    reg_write_8(tx_ch, spi_base + LS1C_SPI_TxFIFO_OFFSET);      // ¿ªÊ¼·¢ËÍ
-    spi_wait_txrx_done(spi_info_p);                             // µÈ´ıÊÕ·¢Íê³É
-    rx_ch = reg_read_8(spi_base + LS1C_SPI_RxFIFO_OFFSET);      // ¶ÁÈ¡ÊÕµ½µÄÊı¾İ
-    spi_clear(spi_info_p);                                      // ÇåÖĞ¶ÏºÍ±êÖ¾Î»
+    // æ”¶å‘æ•°æ®
+    reg_write_8(tx_ch, spi_base + LS1C_SPI_TxFIFO_OFFSET);      // å¼€å§‹å‘é€
+    ls1c_spi_wait_txrx_done(spi_base);                          // ç­‰å¾…æ”¶å‘å®Œæˆ
+    rx_ch = reg_read_8(spi_base + LS1C_SPI_RxFIFO_OFFSET);      // è¯»å–æ”¶åˆ°çš„æ•°æ®
+    ls1c_spi_clear(spi_base);                                   // æ¸…ä¸­æ–­å’Œæ ‡å¿—ä½
 
     return rx_ch;
 }

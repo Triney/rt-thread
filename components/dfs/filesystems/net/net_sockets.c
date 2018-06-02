@@ -223,6 +223,10 @@ int setsockopt(int s, int level, int optname, const void *optval, socklen_t optl
 {
     int sock = dfs_net_getsocket(s);
 
+#if LWIP_VERSION_MAJOR < 2U
+#error "Your lwIP version is not supported. Please using lwIP 2.0.0+."
+#endif
+
     return lwip_setsockopt(sock, level, optname, optval, optlen);
 }
 RTM_EXPORT(setsockopt);
@@ -316,6 +320,16 @@ int socket(int domain, int type, int protocol)
         rt_list_init(&(lwsock->wait_head));
         lwsock->conn->callback = event_callback;
     }
+    else
+    {
+        /* release fd */
+        fd_put(d);
+        fd_put(d);
+        
+        rt_set_errno(-ENOMEM);
+
+    	return -1;
+    }
 
     /* release the ref-count of fd */
     fd_put(d);
@@ -327,6 +341,13 @@ RTM_EXPORT(socket);
 int closesocket(int s)
 {
     int sock = dfs_net_getsocket(s);
+    struct dfs_fd *d;
+
+    d = fd_get(s);
+
+    /* socket has been closed, delete it from file system fd */
+    fd_put(d);
+    fd_put(d);
 
     return lwip_close(sock);
 }
@@ -339,4 +360,3 @@ int ioctlsocket(int s, long cmd, void *arg)
     return lwip_ioctl(sock, cmd, arg);
 }
 RTM_EXPORT(ioctlsocket);
-

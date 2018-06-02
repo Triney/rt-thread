@@ -282,7 +282,7 @@ RTM_EXPORT(system);
 static int _msh_exec_cmd(char *cmd, rt_size_t length, int *retp)
 {
     int argc;
-    int cmd0_size = 0;
+    rt_size_t cmd0_size = 0;
     cmd_function_t cmd_func;
     char *argv[RT_FINSH_ARG_MAX];
 
@@ -405,7 +405,10 @@ void msh_auto_complete_path(char *path)
     ptr = path;
     for (;;)
     {
-        if (*ptr == '/') index = ptr + 1; if (!*ptr) break; ptr ++;
+        if (*ptr == '/') index = ptr + 1; 
+        if (!*ptr) break; 
+
+        ptr ++;
     }
     if (index == RT_NULL) index = path;
 
@@ -445,7 +448,7 @@ void msh_auto_complete_path(char *path)
     }
     else
     {
-        int length, min_length;
+        rt_size_t length, min_length;
 
         min_length = 0;
         for (;;)

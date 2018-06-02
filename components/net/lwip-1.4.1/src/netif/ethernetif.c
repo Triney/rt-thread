@@ -434,9 +434,9 @@ int eth_system_device_init(void)
     RT_ASSERT(result == RT_EOK);
 #endif
 
-	return (int)result;
+    return (int)result;
 }
-INIT_DEVICE_EXPORT(eth_system_device_init);
+INIT_PREV_EXPORT(eth_system_device_init);
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
@@ -617,5 +617,35 @@ void list_tcps(void)
 }
 FINSH_FUNCTION_EXPORT(list_tcps, list all of tcp connections);
 #endif
+
+#if LWIP_UDP
+#include "lwip/udp.h"
+void list_udps(void)
+{
+    struct udp_pcb *pcb;
+    rt_uint32_t num = 0;
+    char local_ip_str[16];
+    char remote_ip_str[16];
+
+    rt_enter_critical();
+    rt_kprintf("Active UDP PCB states:\n");
+    for (pcb = udp_pcbs; pcb != NULL; pcb = pcb->next)
+    {
+        strcpy(local_ip_str, ipaddr_ntoa(&(pcb->local_ip)));
+        strcpy(remote_ip_str, ipaddr_ntoa(&(pcb->remote_ip)));
+
+        rt_kprintf("#%d %d %s:%d <==> %s:%d \n",
+                   num, (int)pcb->flags,
+                   local_ip_str,
+                   pcb->local_port,
+                   remote_ip_str,
+                   pcb->remote_port);
+
+        num++;
+    }
+    rt_exit_critical();
+}
+FINSH_FUNCTION_EXPORT(list_udps, list all of udp connections);
+#endif /* LWIP_UDP */
 
 #endif

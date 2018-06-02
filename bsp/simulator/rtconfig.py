@@ -27,7 +27,7 @@ elif  CROSS_TOOL == 'msvc':
     PLATFORM  = 'cl'
     EXEC_PATH = ''
 else:
-    print "bad CROSS TOOL!"
+    print("bad CROSS TOOL!")
     exit(1)
 
 if os.getenv('RTT_EXEC_PATH'):
@@ -43,14 +43,14 @@ if PLATFORM == 'gcc':
     AS = PREFIX + 'gcc'
     AR = PREFIX + 'ar'
     LINK = PREFIX + 'gcc'
-    TARGET_EXT = 'axf'
+    TARGET_EXT = 'elf'
     SIZE = PREFIX + 'size'
     OBJDUMP = PREFIX + 'objdump'
     OBJCPY = PREFIX + 'objcopy'
 
     DEVICE = ' -ffunction-sections -fdata-sections'
     DEVICE = '  '
-    CFLAGS = DEVICE + ' -I/usr/include -w -D_REENTRANT'
+    CFLAGS = DEVICE + ' -I/usr/include -w -D_REENTRANT -D_LINUX -DHAVE_SYS_SIGNALS'
     AFLAGS = ' -c' + DEVICE + ' -x assembler-with-cpp'
     #LFLAGS = DEVICE + ' -Wl,--gc-sections,-Map=rtthread-linux.map -lpthread'
     LFLAGS = DEVICE + ' -Wl,-Map=rtthread-linux.map -pthread -T gcc.ld'
@@ -67,7 +67,7 @@ if PLATFORM == 'gcc':
     POST_ACTION = ''
 
 elif PLATFORM == 'mingw':
-        # toolchains
+    # toolchains
     PREFIX = ''
     CC      = PREFIX + 'gcc'
     CXX     = PREFIX + 'g++'
@@ -79,10 +79,8 @@ elif PLATFORM == 'mingw':
     OBJDUMP = PREFIX + 'objdump'
     OBJCPY = PREFIX + 'objcopy'
 
-#    DEVICE = ' -ffunction-sections -fdata-sections'
     DEVICE = ''
     CFLAGS = DEVICE + ' -D_Win32 -DNO_OLDNAMES -fno-pic -fno-builtin -fno-exceptions -fno-omit-frame-pointer'
-
 
     AFLAGS = ' -c' + DEVICE + ' -x assembler-with-cpp'
     LFLAGS = DEVICE + ' -static-libgcc  -Wl,--gc-sections,-Map=rtthread-win32.map -T mingw.ld '
@@ -117,7 +115,7 @@ elif PLATFORM == 'cl':
         CFLAGS += ' /MT'
         LFLAGS += ''
 
-    CFLAGS += ' /Zi /Od /W 3 /WL '
+    CFLAGS += ' /Zi /Od /W 3 /WL /D_Win32'
     LFLAGS += ' /SUBSYSTEM:CONSOLE /MACHINE:X86 /INCREMENTAL:NO'
 
     CPATH = ''
