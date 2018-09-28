@@ -47,7 +47,7 @@
 #include "App_LDS_Protocol.h"
 #include "fm24clxx.h"
 #include "service_storage.h"
-
+#include "app_task.h"
 
 ALIGN(RT_ALIGN_SIZE)
 static rt_uint8_t led_stack[ 512 ];
@@ -200,7 +200,12 @@ int rt_application_init(void)
     {
         rt_thread_startup(&led_thread);
     }
-
+    
+    init_thread = rt_thread_create("sys init", sys_init_thread,
+            NULL, 8192, 10, 10);
+    if (init_thread != NULL) {
+        rt_thread_startup(init_thread);
+    }
     
 
     
